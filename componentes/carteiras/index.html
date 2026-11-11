@@ -115,7 +115,7 @@ function telaAssessor(a) {
   let h = `<div class="kpis">
     ${kpi('Atendimentos hoje', c.ph.atendimentos + (c.ph.meta ? ' / ' + c.ph.meta : ''), c.ph.meta ? Math.round(100 * c.ph.atendimentos / c.ph.meta) + '% da meta' : 'sem meta hoje', classe(c.ph.atendimentos, c.ph.meta))}
     ${kpi('Semana', c.semAt + ' / ' + c.semMeta, c.semMeta ? Math.round(100 * c.semAt / c.semMeta) + '% da meta' : '', classe(c.semAt, c.semMeta))}
-    ${kpi('Agenda de hoje atendida', c.ph.agenda_total ? c.ph.agenda_atendidos + ' / ' + c.ph.agenda_total : '—', 'clientes da lista das 7h30')}
+    ${kpi('Agenda de hoje atendida', c.ph.agenda_total ? c.ph.agenda_atendidos + ' / ' + c.ph.agenda_total : '—', DADOS.modo === 'gestor' ? 'clientes da lista das 7h30' : 'clientes da agenda do dia')}
     ${kpi('Vendas no ano', pct(r.var_pct), brl(r.fat_atual) + ' até ' + (r.meses_fechados || '') + '/' + (r.ano || ''), r.var_pct == null ? '' : r.var_pct >= 0 ? 'ok' : 'ruim')}
     ${kpi('Risco sem contato', brl(c.riscoSemV), c.riscoSem.length + ' clientes · por mês')}
   </div>`;
@@ -123,9 +123,9 @@ function telaAssessor(a) {
   h += `<div class="grid2"><div class="card"><h2>Atendimentos por dia</h2>${grafico(a.placar)}</div>
         <div class="card"><h2>Vendas por mês</h2>${graficoMensal(r)}</div></div>`;
   const ag = a.agenda_hoje || [];
-  h += `<div class="grid2"><div class="card"><h2>Agenda de hoje (congelada às 7h30)</h2>` + (ag.length ? `<table><thead><tr><th>#</th><th>Cliente</th><th>Motivo</th><th class="num">Risco/mês</th><th>Atendido</th></tr></thead><tbody>` +
+  h += `<div class="grid2"><div class="card"><h2>Agenda de hoje${DADOS.modo === 'gestor' ? ' (congelada às 7h30)' : ''}</h2>` + (ag.length ? `<table><thead><tr><th>#</th><th>Cliente</th><th>Motivo</th><th class="num">Risco/mês</th><th>Atendido</th></tr></thead><tbody>` +
     ag.map(x => `<tr><td>${x.posicao}</td><td>${esc(x.cliente)}<div class="cod">${esc(x.status || '')}</div></td><td>${esc(x.motivo || '')}</td><td class="num">${x.valor_risco ? brl(x.valor_risco) : '—'}</td><td>${x.atendido ? '<span class="tag ok">✓ sim</span>' : '<span class="tag ruim">não</span>'}</td></tr>`).join('') +
-    '</tbody></table>' : '<div class="vazio">A agenda do dia é congelada às 7h30 dos dias úteis.</div>') + '</div>';
+    '</tbody></table>' : DADOS.modo === 'gestor' ? '<div class="vazio">A agenda do dia é congelada às 7h30 dos dias úteis.</div>' : '<div class="vazio">A agenda de hoje ainda não está disponível.</div>') + '</div>';
   h += `<div class="card"><h2>Clientes em risco</h2>` + (a.risco.length ? `<table><thead><tr><th>Cliente</th><th>Status</th><th class="num">Risco/mês</th><th>Contato</th></tr></thead><tbody>` +
     a.risco.slice(0, 15).map(x => `<tr><td>${esc(x.cliente)}<div class="cod">${esc(x.lojas || '')}</div></td><td>${esc(x.status || '')}</td><td class="num">${brl(x.valor_risco)}</td><td><span class="tag ${x.situacao_contato === 'Em dia' || x.situacao_contato === 'Agendado' ? 'ok' : x.situacao_contato === 'Vencido' ? 'ruim' : 'meio'}">${esc(x.situacao_contato || '')}</span><div class="cod">${x.ultima_interacao ? 'último: ' + dt(x.ultima_interacao) : ''}</div></td></tr>`).join('') +
     '</tbody></table>' : '<div class="vazio">Nenhum cliente em risco.</div>') + '</div></div>';
@@ -164,9 +164,9 @@ function telaTodos() {
 
 let atual = DADOS.modo === 'gestor' ? 'todos' : (DADOS.assessores[0] || {}).id;
 var render = function () {
-  $('#sub').textContent = (DADOS.atualizado ? 'Atualizado em ' + new Date(DADOS.atualizado).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) : 'Sem dados do robô ainda') +
-    ' · o robô lê as planilhas de hora em hora (7h às 19h, dias úteis)';
-  if (!DADOS.assessores.length) { $('#app').innerHTML = '<div class="card"><div class="vazio">Ainda não há dados. Assim que o robô rodar, os números aparecem aqui.</div></div>'; return; }
+  $('#sub').textContent = (DADOS.atualizado ? 'Atualizado em ' + new Date(DADOS.atualizado).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) : 'Sem dados ainda') +
+    (DADOS.modo === 'gestor' ? ' · o robô lê as planilhas de hora em hora (7h às 19h, dias úteis)' : '');
+  if (!DADOS.assessores.length) { $('#app').innerHTML = '<div class="card"><div class="vazio">Ainda não há dados para mostrar.</div></div>'; return; }
   let h = '';
   if (DADOS.modo === 'gestor') {
     $('#titulo').textContent = 'Carteiras';
