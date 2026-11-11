@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carteiras</title>
+<style>
+  :root{--roxo:#6B3FA0;--roxo2:#4A2575;--fundo:#F5F3FA;--borda:#E6E1EE;--txt:#2B2238;--sub:#5F5A6B;
+        --verde:#1E7B45;--verdeF:#E3F4EA;--verm:#B42318;--vermF:#FDECEA;--amar:#8A5A00;--amarF:#FFF4D6}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--fundo);color:var(--txt);font-size:14px}
+  header{background:linear-gradient(90deg,#4A2575,#7B4BB5);color:#fff;padding:22px 28px}
+  header h1{margin:0;font-size:22px}
+  header .sub{font-size:12px;color:#EDE4F7;margin-top:4px}
+  main{padding:20px 28px 40px;max-width:1280px;display:flex;flex-direction:column;gap:18px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{border-radius:999px;padding:8px 16px;font-size:13px;border:1px solid #D9D2E5;background:#fff;color:#3D3448;cursor:pointer;font-family:inherit}
+  .chip.on{background:var(--roxo);color:#fff;border-color:var(--roxo);font-weight:600}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  .kpi{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+  .kpi .l{font-size:12px;color:var(--sub)} .kpi .v{font-size:24px;font-weight:700} .kpi .s{font-size:12px;color:var(--sub)}
+  .card{background:#fff;border:1px solid var(--borda);border-radius:12px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+  .card h2{margin:0;font-size:15px}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:18px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--sub);font-weight:600;padding:8px 8px;border-bottom:1px solid var(--borda);white-space:nowrap}
+  td{padding:8px 8px;border-bottom:1px solid #F0EDF5;vertical-align:top}
+  tr.clic{cursor:pointer} tr.clic:hover td{background:#FAF8FD}
+  .num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;border-radius:6px;padding:2px 8px;font-size:12px;font-weight:600;white-space:nowrap}
+  .ok{background:var(--verdeF);color:var(--verde)} .ruim{background:var(--vermF);color:var(--verm)} .meio{background:var(--amarF);color:var(--amar)} .neutro{background:#EFE8F8;color:var(--roxo2)}
+  .bar{height:8px;border-radius:4px;background:#EEE9F5;overflow:hidden;min-width:70px} .bar>i{display:block;height:100%;background:var(--roxo)}
+  .cod{font-size:11px;color:var(--sub)}
+  .vazio{color:var(--sub);font-style:italic;padding:8px 0}
+  .pontos{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+  .leg{font-size:12px;color:var(--sub)}
+  svg text{font-family:inherit}
+  @media(max-width:640px){main{padding:14px}header{padding:16px}.grid2{grid-template-columns:1fr}td,th{padding:6px 4px}}
+</style>
+</head>
+<body>
+<header><h1 id="titulo">Carteiras</h1><div class="sub" id="sub"></div></header>
+<main id="app"></main>
+<script>
+const DADOS = /*DADOS*/{"modo":"gestor","hoje":"2026-11-10","atualizado":null,"assessores":[]}/*FIM*/;
+
+const $ = s => document.querySelector(s);
+const brl = v => v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', {maximumFractionDigits: 0});
+const pct = v => v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : '') + (v * 100).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + '%';
+const dt = s => { if (!s) return '—'; const [a, m, d] = s.slice(0, 10).split('-'); return d + '/' + m; };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const semana = hoje => { const d = new Date(hoje + 'T12:00:00'), dow = (d.getDay() + 6) % 7; const ini = new Date(d - dow * 864e5);
+  return [ini.toISOString().slice(0, 10), new Date(+ini + 6 * 864e5).toISOString().slice(0, 10)]; };
+const classe = (v, meta) => !meta ? 'neutro' : v >= meta ? 'ok' : v >= 0.8 * meta ? 'meio' : 'ruim';
+
+function calc(a) {
+  const hoje = DADOS.hoje, [ini, fim] = semana(hoje);
+  const ph = a.placar.find(p => p.data === hoje) || {meta: 0, atendimentos: 0, efetivos: 0, receptivos: 0, pedidos: 0, agenda_total: 0, agenda_atendidos: 0};
+  const sem = a.placar.filter(p => p.data >= ini && p.data <= fim && p.data <= hoje);
+  const soma = k => sem.reduce((t, p) => t + (p[k] || 0), 0);
+  const diasAbaixo = sem.filter(p => p.meta && p.data < hoje && p.atendimentos < p.meta).length;
+  const riscoSem = a.risco.filter(c => c.situacao_contato !== 'Em dia' && c.situacao_contato !== 'Agendado');
+  return {ph, semAt: soma('atendimentos'), semMeta: soma('meta'), semEf: soma('efetivos'), semPed: soma('pedidos'),
+          semAg: soma('agenda_total'), semAgAt: soma('agenda_atendidos'), diasAbaixo, riscoSem,
+          riscoSemV: riscoSem.reduce((t, c) => t + (c.valor_risco || 0), 0)};
+}
+
+function kpi(l, v, s, cls) { return `<div class="kpi"><span class="l">${l}</span><span class="v">${v}</span><span class="s">${s ? (cls ? `<span class="tag ${cls}">${s}</span>` : s) : ''}</span></div>`; }
+
+function grafico(placar) {
+  const dias = placar.filter(p => p.meta > 0 || p.atendimentos > 0).slice(-10);
+  if (!dias.length) return '<div class="vazio">Ainda sem dias registrados.</div>';
+  const W = 620, H = 180, pad = 26, bw = (W - pad * 2) / dias.length;
+  const max = Math.max(25, ...dias.map(p => Math.max(p.atendimentos, p.meta)));
+  const y = v => H - 24 - (v / max) * (H - 44);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Atendimentos por dia">`;
+  dias.forEach((p, i) => {
+    const x = pad + i * bw + bw * 0.18, w = bw * 0.64, c = p.meta && p.atendimentos >= p.meta ? '#1E7B45' : p.atendimentos >= 0.8 * p.meta ? '#C58A00' : '#B42318';
+    s += `<rect x="${x}" y="${y(p.atendimentos)}" width="${w}" height="${H - 24 - y(p.atendimentos)}" rx="3" fill="${p.meta ? c : '#9C8FB3'}"/>`;
+    s += `<text x="${x + w / 2}" y="${y(p.atendimentos) - 4}" font-size="11" text-anchor="middle" fill="#2B2238">${p.atendimentos}</text>`;
+    s += `<text x="${x + w / 2}" y="${H - 8}" font-size="11" text-anchor="middle" fill="#5F5A6B">${dt(p.data)}</text>`;
+  });
+  const meta = dias.find(p => p.meta) ? dias.find(p => p.meta).meta : 0;
+  if (meta) s += `<line x1="${pad}" x2="${W - pad}" y1="${y(meta)}" y2="${y(meta)}" stroke="#6B3FA0" stroke-dasharray="5 4"/><text x="${W - pad}" y="${y(meta) - 4}" font-size="11" text-anchor="end" fill="#6B3FA0">meta ${meta}</text>`;
+  return s + '</svg><div class="leg">Verde = bateu a meta · amarelo = 80% ou mais · vermelho = abaixo de 80%</div>';
+}
+
+function graficoMensal(r) {
+  if (!r || !r.mensal) return '';
+  const n = r.meses_fechados || 12, A = r.mensal.atual.slice(0, n), B = r.mensal.anterior.slice(0, n);
+  const W = 620, H = 170, pad = 26, bw = (W - pad * 2) / n, max = Math.max(1, ...A, ...B), y = v => H - 22 - (v / max) * (H - 40);
+  const M = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Vendas por mês">`;
+  for (let i = 0; i < n; i++) {
+    const x = pad + i * bw;
+    s += `<rect x="${x + bw * .12}" y="${y(B[i])}" width="${bw * .36}" height="${H - 22 - y(B[i])}" rx="2" fill="#CFC3E3"/>`;
+    s += `<rect x="${x + bw * .52}" y="${y(A[i])}" width="${bw * .36}" height="${H - 22 - y(A[i])}" rx="2" fill="#6B3FA0"/>`;
+    s += `<text x="${x + bw / 2}" y="${H - 6}" font-size="11" text-anchor="middle" fill="#5F5A6B">${M[i]}</text>`;
+  }
+  return s + `</svg><div class="leg"><span style="color:#9C8FB3">■</span> ${r.ano - 1} &nbsp; <span style="color:#6B3FA0">■</span> ${r.ano} · vendas da assessora nas lojas (Max Data)</div>`;
+}
+
+function pontos(a, c) {
+  const p = [];
+  if (c.ph.meta) p.push(`Hoje: <b>${c.ph.atendimentos} de ${c.ph.meta}</b> atendimentos${c.ph.agenda_total ? `; da agenda do dia, <b>${c.ph.agenda_atendidos} de ${c.ph.agenda_total}</b> clientes atendidos` : ''}.`);
+  if (c.semMeta) p.push(`Semana: <b>${c.semAt} de ${c.semMeta}</b> (${Math.round(100 * c.semAt / c.semMeta)}%)` + (c.diasAbaixo ? `, <b>${c.diasAbaixo} dia(s) abaixo da meta</b>.` : '.'));
+  if (c.riscoSem.length) p.push(`<b>${c.riscoSem.length} clientes em risco</b> ainda sem contato, somando <b>${brl(c.riscoSemV)}/mês</b>. O maior: ${esc(c.riscoSem[0].cliente)} (${brl(c.riscoSem[0].valor_risco)}/mês).`);
+  if (a.resumo && a.resumo.var_pct != null) p.push(`Vendas no ano: <b>${pct(a.resumo.var_pct)}</b> sobre o mesmo período do ano passado.`);
+  if (c.semAt && c.semEf / c.semAt < 0.5) p.push(`Só ${Math.round(100 * c.semEf / c.semAt)}% dos atendimentos da semana foram efetivos (com conversa).`);
+  return p.length ? '<ul class="pontos">' + p.map(x => '<li>' + x + '</li>').join('') + '</ul>' : '<div class="vazio">Sem dados ainda.</div>';
+}
+
+function telaAssessor(a) {
+  const c = calc(a), r = a.resumo || {};
+  let h = `<div class="kpis">
+    ${kpi('Atendimentos hoje', c.ph.atendimentos + (c.ph.meta ? ' / ' + c.ph.meta : ''), c.ph.meta ? Math.round(100 * c.ph.atendimentos / c.ph.meta) + '% da meta' : 'sem meta hoje', classe(c.ph.atendimentos, c.ph.meta))}
+    ${kpi('Semana', c.semAt + ' / ' + c.semMeta, c.semMeta ? Math.round(100 * c.semAt / c.semMeta) + '% da meta' : '', classe(c.semAt, c.semMeta))}
+    ${kpi('Agenda de hoje atendida', c.ph.agenda_total ? c.ph.agenda_atendidos + ' / ' + c.ph.agenda_total : '—', 'clientes da lista das 7h30')}
+    ${kpi('Vendas no ano', pct(r.var_pct), brl(r.fat_atual) + ' até ' + (r.meses_fechados || '') + '/' + (r.ano || ''), r.var_pct == null ? '' : r.var_pct >= 0 ? 'ok' : 'ruim')}
+    ${kpi('Risco sem contato', brl(c.riscoSemV), c.riscoSem.length + ' clientes · por mês')}
+  </div>`;
+  if (DADOS.modo === 'gestor') h += `<div class="card"><h2>Pontos para a conversa</h2>${pontos(a, c)}</div>`;
+  h += `<div class="grid2"><div class="card"><h2>Atendimentos por dia</h2>${grafico(a.placar)}</div>
+        <div class="card"><h2>Vendas por mês</h2>${graficoMensal(r)}</div></div>`;
+  const ag = a.agenda_hoje || [];
+  h += `<div class="grid2"><div class="card"><h2>Agenda de hoje (congelada às 7h30)</h2>` + (ag.length ? `<table><thead><tr><th>#</th><th>Cliente</th><th>Motivo</th><th class="num">Risco/mês</th><th>Atendido</th></tr></thead><tbody>` +
+    ag.map(x => `<tr><td>${x.posicao}</td><td>${esc(x.cliente)}<div class="cod">${esc(x.status || '')}</div></td><td>${esc(x.motivo || '')}</td><td class="num">${x.valor_risco ? brl(x.valor_risco) : '—'}</td><td>${x.atendido ? '<span class="tag ok">✓ sim</span>' : '<span class="tag ruim">não</span>'}</td></tr>`).join('') +
+    '</tbody></table>' : '<div class="vazio">A agenda do dia é congelada às 7h30 dos dias úteis.</div>') + '</div>';
+  h += `<div class="card"><h2>Clientes em risco</h2>` + (a.risco.length ? `<table><thead><tr><th>Cliente</th><th>Status</th><th class="num">Risco/mês</th><th>Contato</th></tr></thead><tbody>` +
+    a.risco.slice(0, 15).map(x => `<tr><td>${esc(x.cliente)}<div class="cod">${esc(x.lojas || '')}</div></td><td>${esc(x.status || '')}</td><td class="num">${brl(x.valor_risco)}</td><td><span class="tag ${x.situacao_contato === 'Em dia' || x.situacao_contato === 'Agendado' ? 'ok' : x.situacao_contato === 'Vencido' ? 'ruim' : 'meio'}">${esc(x.situacao_contato || '')}</span><div class="cod">${x.ultima_interacao ? 'último: ' + dt(x.ultima_interacao) : ''}</div></td></tr>`).join('') +
+    '</tbody></table>' : '<div class="vazio">Nenhum cliente em risco.</div>') + '</div></div>';
+  const it = a.interacoes || [];
+  h += `<div class="card"><h2>Últimos atendimentos</h2>` + (it.length ? `<table><thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Resultado</th><th>Origem</th><th>Próxima ação</th></tr></thead><tbody>` +
+    it.slice(0, 15).map(x => `<tr><td>${dt(x.data)}</td><td>${esc(x.cliente)}</td><td>${esc(x.tipo || '')}</td><td>${esc(x.resultado || '')}</td><td>${esc((x.origem || '').split(' ')[0])}</td><td>${esc(x.proxima_acao || '')}${x.proximo_contato ? '<div class="cod">em ' + dt(x.proximo_contato) + '</div>' : ''}</td></tr>`).join('') +
+    '</tbody></table>' : '<div class="vazio">Nenhum atendimento registrado ainda.</div>') + '</div>';
+  if (r.status) {
+    const ord = ['Em alta','Estável','Novo','Reativado','Recebido','Em queda','Parado','Perdido','Ciclo longo','Comprou na fábrica','Migrou','Transferido','Inativo','Sem venda'];
+    h += `<div class="card"><h2>Carteira por status</h2><div class="chips">` + ord.filter(k => r.status[k]).map(k => `<span class="tag neutro">${k}: ${r.status[k]}</span>`).join('') + '</div></div>';
+  }
+  return h;
+}
+
+function telaTodos() {
+  const L = DADOS.assessores.map(a => ({a, c: calc(a)}));
+  const t = k => L.reduce((s, x) => s + (x.c[k] || 0), 0);
+  const hojeAt = L.reduce((s, x) => s + x.c.ph.atendimentos, 0), hojeMeta = L.reduce((s, x) => s + x.c.ph.meta, 0);
+  let h = `<div class="kpis">
+    ${kpi('Atendimentos hoje (equipe)', hojeAt + ' / ' + hojeMeta, hojeMeta ? Math.round(100 * hojeAt / hojeMeta) + '% da meta' : '', classe(hojeAt, hojeMeta))}
+    ${kpi('Semana (equipe)', t('semAt') + ' / ' + t('semMeta'), t('semMeta') ? Math.round(100 * t('semAt') / t('semMeta')) + '% da meta' : '', classe(t('semAt'), t('semMeta')))}
+    ${kpi('Pedidos na semana', t('semPed'), 'resultado "Pedido fechado"')}
+    ${kpi('Risco sem contato', brl(t('riscoSemV')), 'por mês, somando a equipe')}
+  </div>`;
+  h += `<div class="card"><h2>Placar da equipe</h2><table><thead><tr><th>Assessor</th><th class="num">Hoje</th><th></th><th class="num">Semana</th><th class="num">Agenda hoje</th><th class="num">Efetivos sem.</th><th class="num">Pedidos sem.</th><th class="num">Vendas no ano</th><th class="num">Risco sem contato</th></tr></thead><tbody>` +
+    L.map(({a, c}) => `<tr class="clic" data-id="${a.id}"><td><b>${esc(a.nome)}</b></td>
+      <td class="num"><span class="tag ${classe(c.ph.atendimentos, c.ph.meta)}">${c.ph.atendimentos}/${c.ph.meta}</span></td>
+      <td><div class="bar"><i style="width:${c.ph.meta ? Math.min(100, 100 * c.ph.atendimentos / c.ph.meta) : 0}%"></i></div></td>
+      <td class="num">${c.semAt}/${c.semMeta}</td><td class="num">${c.ph.agenda_total ? c.ph.agenda_atendidos + '/' + c.ph.agenda_total : '—'}</td>
+      <td class="num">${c.semEf}</td><td class="num">${c.semPed}</td>
+      <td class="num"><span class="tag ${a.resumo && a.resumo.var_pct >= 0 ? 'ok' : 'ruim'}">${pct(a.resumo && a.resumo.var_pct)}</span></td>
+      <td class="num">${brl(c.riscoSemV)}<div class="cod">${c.riscoSem.length} clientes</div></td></tr>`).join('') +
+    '</tbody></table><div class="leg">Clique num assessor para abrir o bloco dele.</div></div>';
+  return h;
+}
+
+let atual = DADOS.modo === 'gestor' ? 'todos' : (DADOS.assessores[0] || {}).id;
+function render() {
+  $('#sub').textContent = (DADOS.atualizado ? 'Atualizado em ' + new Date(DADOS.atualizado).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) : 'Sem dados do robô ainda') +
+    ' · o robô lê as planilhas de hora em hora (7h às 19h, dias úteis)';
+  if (!DADOS.assessores.length) { $('#app').innerHTML = '<div class="card"><div class="vazio">Ainda não há dados. Assim que o robô rodar, os números aparecem aqui.</div></div>'; return; }
+  let h = '';
+  if (DADOS.modo === 'gestor') {
+    $('#titulo').textContent = 'Carteiras';
+    h += '<div class="chips">' + [['todos', 'Todos']].concat(DADOS.assessores.map(a => [a.id, a.nome]))
+      .map(([id, n]) => `<button class="chip ${String(id) === String(atual) ? 'on' : ''}" data-id="${id}">${esc(n)}</button>`).join('') + '</div>';
+  } else $('#titulo').textContent = 'Minha carteira — ' + DADOS.assessores[0].nome;
+  const a = DADOS.assessores.find(x => String(x.id) === String(atual));
+  h += atual === 'todos' || !a ? telaTodos() : telaAssessor(a);
+  $('#app').innerHTML = h;
+  document.querySelectorAll('[data-id]').forEach(e => e.onclick = () => { atual = e.dataset.id; render(); window.scrollTo(0, 0); });
+}
+render();
+</script>
+</body>
+</html>

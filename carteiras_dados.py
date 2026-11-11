@@ -1,0 +1,78 @@
+"""
+carteiras_dados.py — monta os dados da tela Carteiras (carteiras.html).
+
+Não depende do Streamlit: recebe as linhas das tabelas carteira_* (lidas com a
+chave do menuarp, ou com o login da assessora no app dela) e devolve o JSON
+que o HTML desenha. Usado pela página do menuarp e pelo app das assessoras.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+TZ = ZoneInfo("America/Sao_Paulo")
+HTML = os.path.join(os.path.dirname(os.path.abspath(__file__)), "carteiras.html")
+ORDEM = ["Madê", "Bruna", "Luana", "Diego", "Francely", "Lizia", "Jarlene"]
+NOMES = {1: "Bruna", 2: "Madê", 3: "Luana", 4: "Diego", 5: "Francely", 6: "Lizia", 7: "Jarlene"}
+TABELAS = ("carteira_resumo", "carteira_placar_dia", "carteira_agenda_dia", "carteira_clientes", "carteira_interacoes")
+
+
+def hoje() -> str:
+    return datetime.now(TZ).date().isoformat()
+
+
+def desde(dias: int = 45) -> str:
+    return (datetime.now(TZ).date() - timedelta(days=dias)).isoformat()
+
+
+def _n(x):
+    return None if x is None else float(x)
+
+
+def montar(tab: dict[str, list[dict]], modo: str = "gestor") -> dict:
+    """tab: {nome_da_tabela: linhas}. Devolve o dicionário que vai para o HTML."""
+    dia = hoje()
+    ids = sorted({r["assessor_id"] for t in TABELAS for r in tab.get(t, [])},
+                 key=lambda i: ORDEM.index(NOMES[i]) if NOMES.get(i) in ORDEM else 99)
+    atualizado = max((r.get("atualizado_em") or "" for r in tab.get("carteira_placar_dia", [])), default="") or None
+    saida = {"modo": modo, "hoje": dia, "atualizado": atualizado, "assessores": []}
+    for aid in ids:
+        res = next((r for r in tab.get("carteira_resumo", []) if r["assessor_id"] == aid), None)
+        if res:
+            res = {k: (_n(v) if k in ("fat_ant", "fat_atual", "var_pct", "valor_risco", "fabrica_ano") else v)
+                   for k, v in res.items()}
+        placar = sorted((r for r in tab.get("carteira_placar_dia", []) if r["assessor_id"] == aid), key=lambda r: r["data"])
+        inter = sorted((r for r in tab.get("carteira_interacoes", []) if r["assessor_id"] == aid and r.get("valido")),
+                       key=lambda r: (r.get("data") or "", r["linha"]), reverse=True)
+        atendidos_hoje = {r["cliente"] for r in inter if r.get("data") == dia}
+        agenda = sorted((r for r in tab.get("carteira_agenda_dia", []) if r["assessor_id"] == aid and r["data"] == dia),
+                        key=lambda r: r["posicao"])
+        risco = sorted((r for r in tab.get("carteira_clientes", [])
+                        if r["assessor_id"] == aid and (_n(r.get("valor_risco")) or 0) > 0),
+                       key=lambda r: -(_n(r.get("valor_risco")) or 0))
+        saida["assessores"].append({
+            "id": aid, "nome": NOMES.get(aid, str(aid)), "resumo": res,
+            "placar": [{k: r[k] for k in ("data", "meta", "atendimentos", "receptivos", "efetivos", "pedidos",
+                                          "agenda_total", "agenda_atendidos")} for r in placar],
+            "agenda_hoje": [{"posicao": r["posicao"], "cliente": r["cliente"], "motivo": r.get("motivo"),
+                             "status": r.get("status"), "valor_risco": _n(r.get("valor_risco")),
+                             "atendido": r["cliente"] in atendidos_hoje} for r in agenda],
+            "risco": [{"cliente": r["cliente"], "status": r.get("status"), "valor_risco": _n(r.get("valor_risco")),
+                       "situacao_contato": r.get("situacao_contato"), "ultima_interacao": r.get("ultima_interacao"),
+                       "lojas": r.get("lojas")} for r in risco[:40]],
+            "interacoes": [{k: r.get(k) for k in ("data", "cliente", "tipo", "resultado", "origem", "proxima_acao",
+                                                  "proximo_contato")} for r in inter[:30]],
+        })
+    return saida
+
+
+def html(dados: dict) -> str:
+    """O carteiras.html com os dados colocados no lugar do exemplo."""
+    with open(HTML, encoding="utf-8") as f:
+        modelo = f.read()
+    ini, fim = modelo.index("/*DADOS*/") + len("/*DADOS*/"), modelo.index("/*FIM*/")
+    js = json.dumps(dados, ensure_ascii=False, default=str).replace("</", "<\\/")
+    return modelo[:ini] + js + modelo[fim:]
