@@ -128,4 +128,4 @@ if tab is None:
     st.warning("Seu login ainda não está ligado a uma carteira. Fale com o Pi.")
     st.stop()
 
-components.html(cd.html(cd.montar(tab, "assessora")), height=2300, scrolling=True)
+components.html(cd.html(cd.montar(tab, "assessora")), height=900, scrolling=False)

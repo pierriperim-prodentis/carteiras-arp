@@ -8,7 +8,7 @@
   :root{--roxo:#6B3FA0;--roxo2:#4A2575;--fundo:#F5F3FA;--borda:#E6E1EE;--txt:#2B2238;--sub:#5F5A6B;
         --verde:#1E7B45;--verdeF:#E3F4EA;--verm:#B42318;--vermF:#FDECEA;--amar:#8A5A00;--amarF:#FFF4D6}
   *{box-sizing:border-box}
-  body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--fundo);color:var(--txt);font-size:14px}
+  body{margin:0;overflow:hidden;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--fundo);color:var(--txt);font-size:14px}
   header{background:linear-gradient(90deg,#4A2575,#7B4BB5);color:#fff;padding:22px 28px}
   header h1{margin:0;font-size:22px}
   header .sub{font-size:12px;color:#EDE4F7;margin-top:4px}
@@ -179,6 +179,15 @@ function render() {
   document.querySelectorAll('[data-id]').forEach(e => e.onclick = () => { atual = e.dataset.id; render(); window.scrollTo(0, 0); });
 }
 render();
+
+// Ajusta a altura da moldura do Streamlit ao conteúdo: fica só a rolagem da página.
+function ajustarAltura() {
+  const h = Math.ceil(document.documentElement.scrollHeight) + 4;
+  window.parent.postMessage({isStreamlitMessage: true, type: 'streamlit:setFrameHeight', height: h}, '*');
+}
+new ResizeObserver(ajustarAltura).observe(document.body);
+window.addEventListener('load', ajustarAltura);
+ajustarAltura();
 </script>
 </body>
 </html>
