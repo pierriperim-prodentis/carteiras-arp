@@ -36,6 +36,21 @@ def _n(x):
     return None if x is None else float(x)
 
 
+NUMEROS = ("valor_risco", "media_ant", "media_atual", "var_acum", "ciclo", "outros_valor", "fabrica_ano",
+           "media_2023", "media_2024", "acum_ant", "acum_atual", "meses_sem_compra")
+CAMPOS_INTER = ("data", "cliente", "tipo", "resultado", "origem", "motivo", "concorrente", "nivel_risco",
+                "proxima_acao", "apoio", "proximo_contato", "observacoes")
+# clientes que vão para a tela (ficha e busca): quem comprou nos 2 anos, está em risco ou na agenda
+FILTRO_CLIENTES = ("or", "(media_ant.gt.0,media_atual.gt.0,valor_risco.gt.0,prioridade.gt.0)")
+
+
+def _ficha(r: dict) -> dict:
+    f = {k: v for k, v in r.items() if k not in ("assessor_id", "atualizado_em", "prioridade")}
+    for k in NUMEROS:
+        f[k] = _n(f.get(k))
+    return {k: v for k, v in f.items() if v not in (None, "")}      # sem campos vazios: pacote mais leve
+
+
 def montar(tab: dict[str, list[dict]], modo: str = "gestor") -> dict:
     """tab: {nome_da_tabela: linhas}. Devolve o dicionário que vai para o HTML."""
     dia = hoje()
@@ -54,8 +69,8 @@ def montar(tab: dict[str, list[dict]], modo: str = "gestor") -> dict:
         atendidos_hoje = {r["cliente"] for r in inter if r.get("data") == dia}
         agenda = sorted((r for r in tab.get("carteira_agenda_dia", []) if r["assessor_id"] == aid and r["data"] == dia),
                         key=lambda r: r["posicao"])
-        risco = sorted((r for r in tab.get("carteira_clientes", [])
-                        if r["assessor_id"] == aid and (_n(r.get("valor_risco")) or 0) > 0),
+        clientes = [r for r in tab.get("carteira_clientes", []) if r["assessor_id"] == aid]
+        risco = sorted((r for r in clientes if (_n(r.get("valor_risco")) or 0) > 0),
                        key=lambda r: -(_n(r.get("valor_risco")) or 0))
         saida["assessores"].append({
             "id": aid, "nome": NOMES.get(aid, str(aid)), "resumo": res,
@@ -64,11 +79,9 @@ def montar(tab: dict[str, list[dict]], modo: str = "gestor") -> dict:
             "agenda_hoje": [{"posicao": r["posicao"], "cliente": r["cliente"], "motivo": r.get("motivo"),
                              "status": r.get("status"), "valor_risco": _n(r.get("valor_risco")),
                              "atendido": r["cliente"] in atendidos_hoje} for r in agenda],
-            "risco": [{"cliente": r["cliente"], "status": r.get("status"), "valor_risco": _n(r.get("valor_risco")),
-                       "situacao_contato": r.get("situacao_contato"), "ultima_interacao": r.get("ultima_interacao"),
-                       "lojas": r.get("lojas")} for r in risco[:40]],
-            "interacoes": [{k: r.get(k) for k in ("data", "cliente", "tipo", "resultado", "origem", "proxima_acao",
-                                                  "proximo_contato")} for r in inter[:30]],
+            "risco": [r["cliente"] for r in risco[:40]],
+            "clientes": [_ficha(r) for r in clientes],
+            "interacoes": [{k: r.get(k) for k in CAMPOS_INTER} for r in inter[:600]],
         })
     return saida
 

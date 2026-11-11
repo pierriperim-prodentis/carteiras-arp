@@ -35,6 +35,15 @@
   .pontos{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
   .leg{font-size:12px;color:var(--sub)}
   svg text{font-family:inherit}
+  a.cli{color:var(--txt);text-decoration:none;border-bottom:1px dashed #B9A8D6;cursor:pointer}
+  a.cli:hover{color:var(--roxo);border-bottom-color:var(--roxo)}
+  .busca{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .busca input{flex:1 1 260px;max-width:460px;padding:9px 12px;border:1px solid #D9D2E5;border-radius:8px;font:inherit;background:#fff}
+  .voltar{border:1px solid #D9D2E5;background:#fff;border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer;color:var(--roxo2);font-weight:600}
+  .campos{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 18px}
+  .campos div{display:flex;flex-direction:column;gap:2px} .campos .l{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em} .campos .v{font-size:14px}
+  .k4{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+  .titulo-ficha{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center} .titulo-ficha h2{font-size:18px}
   @media(max-width:640px){main{padding:14px}header{padding:16px}.grid2{grid-template-columns:1fr}td,th{padding:6px 4px}}
 </style>
 </head>
@@ -53,13 +62,22 @@ const semana = hoje => { const d = new Date(hoje + 'T12:00:00'), dow = (d.getDay
   return [ini.toISOString().slice(0, 10), new Date(+ini + 6 * 864e5).toISOString().slice(0, 10)]; };
 const classe = (v, meta) => !meta ? 'neutro' : v >= meta ? 'ok' : v >= 0.8 * meta ? 'meio' : 'ruim';
 
+function prep(a) {
+  if (a._cli) return;
+  a._cli = {}; (a.clientes || []).forEach(c => a._cli[c.cliente] = c);
+  a._risco = (a.risco || []).map(n => a._cli[n]).filter(Boolean);
+}
+const cli = nome => `<a class="cli" data-cli="${encodeURIComponent(nome || '')}">${esc(nome)}</a>`;
+let ficha = null;
+
 function calc(a) {
+  prep(a);
   const hoje = DADOS.hoje, [ini, fim] = semana(hoje);
   const ph = a.placar.find(p => p.data === hoje) || {meta: 0, atendimentos: 0, efetivos: 0, receptivos: 0, pedidos: 0, agenda_total: 0, agenda_atendidos: 0};
   const sem = a.placar.filter(p => p.data >= ini && p.data <= fim && p.data <= hoje);
   const soma = k => sem.reduce((t, p) => t + (p[k] || 0), 0);
   const diasAbaixo = sem.filter(p => p.meta && p.data < hoje && p.atendimentos < p.meta).length;
-  const riscoSem = a.risco.filter(c => c.situacao_contato !== 'Em dia' && c.situacao_contato !== 'Agendado');
+  const riscoSem = a._risco.filter(c => c.situacao_contato !== 'Em dia' && c.situacao_contato !== 'Agendado');
   return {ph, semAt: soma('atendimentos'), semMeta: soma('meta'), semEf: soma('efetivos'), semPed: soma('pedidos'),
           semAg: soma('agenda_total'), semAgAt: soma('agenda_atendidos'), diasAbaixo, riscoSem,
           riscoSemV: riscoSem.reduce((t, c) => t + (c.valor_risco || 0), 0)};
@@ -104,7 +122,7 @@ function pontos(a, c) {
   const p = [];
   if (c.ph.meta) p.push(`Hoje: <b>${c.ph.atendimentos} de ${c.ph.meta}</b> atendimentos${c.ph.agenda_total ? `; da agenda do dia, <b>${c.ph.agenda_atendidos} de ${c.ph.agenda_total}</b> clientes atendidos` : ''}.`);
   if (c.semMeta) p.push(`Semana: <b>${c.semAt} de ${c.semMeta}</b> (${Math.round(100 * c.semAt / c.semMeta)}%)` + (c.diasAbaixo ? `, <b>${c.diasAbaixo} dia(s) abaixo da meta</b>.` : '.'));
-  if (c.riscoSem.length) p.push(`<b>${c.riscoSem.length} clientes em risco</b> ainda sem contato, somando <b>${brl(c.riscoSemV)}/mês</b>. O maior: ${esc(c.riscoSem[0].cliente)} (${brl(c.riscoSem[0].valor_risco)}/mês).`);
+  if (c.riscoSem.length) p.push(`<b>${c.riscoSem.length} clientes em risco</b> ainda sem contato, somando <b>${brl(c.riscoSemV)}/mês</b>. O maior: ${cli(c.riscoSem[0].cliente)} (${brl(c.riscoSem[0].valor_risco)}/mês).`);
   if (a.resumo && a.resumo.var_pct != null) p.push(`Vendas no ano: <b>${pct(a.resumo.var_pct)}</b> sobre o mesmo período do ano passado.`);
   if (c.semAt && c.semEf / c.semAt < 0.5) p.push(`Só ${Math.round(100 * c.semEf / c.semAt)}% dos atendimentos da semana foram efetivos (com conversa).`);
   return p.length ? '<ul class="pontos">' + p.map(x => '<li>' + x + '</li>').join('') + '</ul>' : '<div class="vazio">Sem dados ainda.</div>';
@@ -112,7 +130,9 @@ function pontos(a, c) {
 
 function telaAssessor(a) {
   const c = calc(a), r = a.resumo || {};
-  let h = `<div class="kpis">
+  let h = `<div class="busca"><input id="busca" list="lista-cli" placeholder="🔎 Buscar cliente pelo nome e abrir a ficha" autocomplete="off">
+    <datalist id="lista-cli">${(a.clientes || []).map(x => `<option value="${esc(x.cliente)}">`).join('')}</datalist></div>
+  <div class="kpis">
     ${kpi('Atendimentos hoje', c.ph.atendimentos + (c.ph.meta ? ' / ' + c.ph.meta : ''), c.ph.meta ? Math.round(100 * c.ph.atendimentos / c.ph.meta) + '% da meta' : 'sem meta hoje', classe(c.ph.atendimentos, c.ph.meta))}
     ${kpi('Semana', c.semAt + ' / ' + c.semMeta, c.semMeta ? Math.round(100 * c.semAt / c.semMeta) + '% da meta' : '', classe(c.semAt, c.semMeta))}
     ${kpi('Agenda de hoje atendida', c.ph.agenda_total ? c.ph.agenda_atendidos + ' / ' + c.ph.agenda_total : '—', DADOS.modo === 'gestor' ? 'clientes da lista das 7h30' : 'clientes da agenda do dia')}
@@ -124,19 +144,55 @@ function telaAssessor(a) {
         <div class="card"><h2>Vendas por mês</h2>${graficoMensal(r)}</div></div>`;
   const ag = a.agenda_hoje || [];
   h += `<div class="grid2"><div class="card"><h2>Agenda de hoje${DADOS.modo === 'gestor' ? ' (congelada às 7h30)' : ''}</h2>` + (ag.length ? `<table><thead><tr><th>#</th><th>Cliente</th><th>Motivo</th><th class="num">Risco/mês</th><th>Atendido</th></tr></thead><tbody>` +
-    ag.map(x => `<tr><td>${x.posicao}</td><td>${esc(x.cliente)}<div class="cod">${esc(x.status || '')}</div></td><td>${esc(x.motivo || '')}</td><td class="num">${x.valor_risco ? brl(x.valor_risco) : '—'}</td><td>${x.atendido ? '<span class="tag ok">✓ sim</span>' : '<span class="tag ruim">não</span>'}</td></tr>`).join('') +
+    ag.map(x => `<tr><td>${x.posicao}</td><td>${cli(x.cliente)}<div class="cod">${esc(x.status || '')}</div></td><td>${esc(x.motivo || '')}</td><td class="num">${x.valor_risco ? brl(x.valor_risco) : '—'}</td><td>${x.atendido ? '<span class="tag ok">✓ sim</span>' : '<span class="tag ruim">não</span>'}</td></tr>`).join('') +
     '</tbody></table>' : DADOS.modo === 'gestor' ? '<div class="vazio">A agenda do dia é congelada às 7h30 dos dias úteis.</div>' : '<div class="vazio">A agenda de hoje ainda não está disponível.</div>') + '</div>';
-  h += `<div class="card"><h2>Clientes em risco</h2>` + (a.risco.length ? `<table><thead><tr><th>Cliente</th><th>Status</th><th class="num">Risco/mês</th><th>Contato</th></tr></thead><tbody>` +
-    a.risco.slice(0, 15).map(x => `<tr><td>${esc(x.cliente)}<div class="cod">${esc(x.lojas || '')}</div></td><td>${esc(x.status || '')}</td><td class="num">${brl(x.valor_risco)}</td><td><span class="tag ${x.situacao_contato === 'Em dia' || x.situacao_contato === 'Agendado' ? 'ok' : x.situacao_contato === 'Vencido' ? 'ruim' : 'meio'}">${esc(x.situacao_contato || '')}</span><div class="cod">${x.ultima_interacao ? 'último: ' + dt(x.ultima_interacao) : ''}</div></td></tr>`).join('') +
+  h += `<div class="card"><h2>Clientes em risco</h2>` + (a._risco.length ? `<table><thead><tr><th>Cliente</th><th>Status</th><th class="num">Risco/mês</th><th>Contato</th></tr></thead><tbody>` +
+    a._risco.slice(0, 15).map(x => `<tr><td>${cli(x.cliente)}<div class="cod">${esc(x.lojas || '')}</div></td><td>${esc(x.status || '')}</td><td class="num">${brl(x.valor_risco)}</td><td><span class="tag ${x.situacao_contato === 'Em dia' || x.situacao_contato === 'Agendado' ? 'ok' : x.situacao_contato === 'Vencido' ? 'ruim' : 'meio'}">${esc(x.situacao_contato || '')}</span><div class="cod">${x.ultima_interacao ? 'último: ' + dt(x.ultima_interacao) : ''}</div></td></tr>`).join('') +
     '</tbody></table>' : '<div class="vazio">Nenhum cliente em risco.</div>') + '</div></div>';
   const it = a.interacoes || [];
   h += `<div class="card"><h2>Últimos atendimentos</h2>` + (it.length ? `<table><thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Resultado</th><th>Origem</th><th>Próxima ação</th></tr></thead><tbody>` +
-    it.slice(0, 15).map(x => `<tr><td>${dt(x.data)}</td><td>${esc(x.cliente)}</td><td>${esc(x.tipo || '')}</td><td>${esc(x.resultado || '')}</td><td>${esc((x.origem || '').split(' ')[0])}</td><td>${esc(x.proxima_acao || '')}${x.proximo_contato ? '<div class="cod">em ' + dt(x.proximo_contato) + '</div>' : ''}</td></tr>`).join('') +
+    it.slice(0, 15).map(x => `<tr><td>${dt(x.data)}</td><td>${cli(x.cliente)}</td><td>${esc(x.tipo || '')}</td><td>${esc(x.resultado || '')}</td><td>${esc((x.origem || '').split(' ')[0])}</td><td>${esc(x.proxima_acao || '')}${x.proximo_contato ? '<div class="cod">em ' + dt(x.proximo_contato) + '</div>' : ''}</td></tr>`).join('') +
     '</tbody></table>' : '<div class="vazio">Nenhum atendimento registrado ainda.</div>') + '</div>';
   if (r.status) {
     const ord = ['Em alta','Estável','Novo','Reativado','Recebido','Em queda','Parado','Perdido','Ciclo longo','Comprou na fábrica','Migrou','Transferido','Inativo','Sem venda'];
     h += `<div class="card"><h2>Carteira por status</h2><div class="chips">` + ord.filter(k => r.status[k]).map(k => `<span class="tag neutro">${k}: ${r.status[k]}</span>`).join('') + '</div></div>';
   }
+  return h;
+}
+
+function telaFicha(a, nome) {
+  prep(a);
+  const f = a._cli[nome] || {cliente: nome}, r = a.resumo || {};
+  const corSt = {'Em queda': 'meio', 'Parado': 'ruim', 'Perdido': 'ruim', 'Em alta': 'ok', 'Estável': 'ok', 'Novo': 'ok', 'Reativado': 'ok', 'Recebido': 'neutro'}[f.status] || 'neutro';
+  const corCt = f.situacao_contato === 'Em dia' || f.situacao_contato === 'Agendado' ? 'ok' : f.situacao_contato === 'Vencido' ? 'ruim' : 'meio';
+  const meses = f.meses_sem_compra == null ? '' : f.meses_sem_compra + (f.meses_sem_compra === 1 ? ' mês' : ' meses') + ' sem comprar';
+  let h = `<div><button class="voltar" data-voltar="1">‹ Voltar</button></div>
+  <div class="card"><div class="titulo-ficha"><h2>${esc(f.cliente)}</h2>
+    ${f.status ? `<span class="tag ${corSt}">${esc(f.status)}</span>` : ''}${f.situacao_contato ? `<span class="tag ${corCt}">Contato: ${esc(f.situacao_contato)}</span>` : ''}
+    ${f.motivo_agenda ? `<span class="tag neutro">Agenda: ${esc(f.motivo_agenda)}</span>` : ''}</div>
+    <div class="cod">${[f.lojas, f.tipo_cliente, [f.cidade, f.uf].filter(Boolean).join('/'), f.situacao_cadastral, f.contato].filter(Boolean).map(esc).join(' · ')}</div></div>
+  <div class="kpis k4">
+    ${kpi('Média mês ' + ((r.ano || 0) - 1), brl(f.media_ant), 'média ' + ((r.ano || 0) - 2) + ': ' + brl(f.media_2024))}
+    ${kpi('Média mês ' + (r.ano || ''), brl(f.media_atual), 'acumulado: ' + brl(f.acum_atual))}
+    ${kpi('Var. acumulada', pct(f.var_acum), 'mesmo período: ' + brl(f.acum_ant), f.var_acum == null ? '' : f.var_acum >= 0 ? 'ok' : 'ruim')}
+    ${kpi('Última compra', f.ultima_compra ? f.ultima_compra.slice(5, 7) + '/' + f.ultima_compra.slice(0, 4) : '—', meses)}
+    ${kpi('Ciclo de compra', f.ciclo ? f.ciclo.toLocaleString('pt-BR') + ' meses' : '—', 'compra em média a cada')}
+    ${kpi('Risco', f.valor_risco ? brl(f.valor_risco) : '—', 'por mês')}
+    ${kpi('Fábrica no ano', f.fabrica_ano ? brl(f.fabrica_ano) : '—', f.ultima_fabrica ? 'última: ' + dt(f.ultima_fabrica) + '/' + f.ultima_fabrica.slice(0, 4) : '')}
+    ${kpi('Com outro assessor', f.outros_valor ? brl(f.outros_valor) : '—', 'no ano atual')}
+  </div>
+  <div class="grid2"><div class="card"><h2>Compras mês a mês (loja)</h2>${f.mensal ? graficoMensal({mensal: f.mensal, ano: r.ano, meses_fechados: r.meses_fechados}).replace('vendas da assessora nas lojas (Max Data)', 'compras do cliente nas lojas (Max Data)') : '<div class="vazio">Sem histórico.</div>'}</div>
+  <div class="card"><h2>Cadastro</h2><div class="campos">` +
+    [['Especialidade', f.especialidade], ['Assessor preferencial', f.assessor_pref], ['Tempo de relacionamento', f.tempo_relacionamento],
+     ['Sistema de implantes', f.sist_implantes], ['Usa scanner?', [f.usa_scanner, f.marca_scanner].filter(Boolean).join(' · ')],
+     ['Outras marcas', f.outras_marcas], ['Volume de implantes/mês', f.volume_implantes], ['Percepção sobre Neodent', f.percepcao_neodent],
+     ['Concorrente principal', f.concorrente]]
+      .map(([l, v]) => `<div><span class="l">${l}</span><span class="v">${v ? esc(v) : '—'}</span></div>`).join('') + `</div></div></div>`;
+  const it = (a.interacoes || []).filter(x => x.cliente === nome);
+  h += `<div class="card"><h2>Histórico de atendimentos (${it.length})</h2>` + (it.length ? `<table><thead><tr><th>Data</th><th>Tipo</th><th>Resultado</th><th>Origem</th><th>Motivo / concorrente</th><th>Próxima ação</th><th>Observações</th></tr></thead><tbody>` +
+    it.map(x => `<tr><td>${dt(x.data)}</td><td>${esc(x.tipo || '')}</td><td>${esc(x.resultado || '')}</td><td>${esc((x.origem || '').split(' ')[0])}</td>
+      <td>${esc([x.motivo, x.concorrente].filter(Boolean).join(' · '))}</td><td>${esc(x.proxima_acao || '')}${x.proximo_contato ? '<div class="cod">em ' + dt(x.proximo_contato) + '</div>' : ''}</td><td>${esc(x.observacoes || '')}</td></tr>`).join('') +
+    '</tbody></table>' : '<div class="vazio">Nenhum atendimento registrado com este cliente.</div>') + '</div>';
   return h;
 }
 
@@ -174,9 +230,14 @@ var render = function () {
       .map(([id, n]) => `<button class="chip ${String(id) === String(atual) ? 'on' : ''}" data-id="${id}">${esc(n)}</button>`).join('') + '</div>';
   } else $('#titulo').textContent = 'Minha carteira — ' + DADOS.assessores[0].nome;
   const a = DADOS.assessores.find(x => String(x.id) === String(atual));
-  h += atual === 'todos' || !a ? telaTodos() : telaAssessor(a);
+  h += atual === 'todos' || !a ? telaTodos() : ficha ? telaFicha(a, ficha) : telaAssessor(a);
   $('#app').innerHTML = h;
-  document.querySelectorAll('[data-id]').forEach(e => e.onclick = () => { atual = e.dataset.id; render(); window.scrollTo(0, 0); });
+  const topo = () => { try { $('header').scrollIntoView({block: 'start'}); } catch (e) { window.scrollTo(0, 0); } };
+  document.querySelectorAll('[data-id]').forEach(e => e.onclick = () => { atual = e.dataset.id; ficha = null; render(); topo(); });
+  document.querySelectorAll('[data-cli]').forEach(e => e.onclick = () => { ficha = decodeURIComponent(e.dataset.cli); render(); topo(); });
+  document.querySelectorAll('[data-voltar]').forEach(e => e.onclick = () => { ficha = null; render(); topo(); });
+  const b = $('#busca');
+  if (b) b.onchange = () => { const n = b.value.trim(); if (a && a._cli && a._cli[n]) { ficha = n; render(); topo(); } };
 }
 // Dois jeitos de receber os dados:
 //  - componente do Streamlit (menuarp e app das assessoras): chegam pela mensagem "render";

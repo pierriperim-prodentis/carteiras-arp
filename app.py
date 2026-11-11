@@ -48,12 +48,19 @@ def renovar(refresh):
 
 
 def ler(tabela, token, filtros=None):
-    p = {"select": "*", **(filtros or {})}
-    r = requests.get(f"{URL}/rest/v1/{tabela}", headers=_h(token), params=p, timeout=TIMEOUT)
-    if r.status_code == 401:
-        raise PermissionError
-    r.raise_for_status()
-    return r.json()
+    """Lê a tabela em páginas de 1000 (o banco devolve no máximo 1000 linhas por vez)."""
+    linhas, inicio = [], 0
+    while True:
+        p = {"select": "*", **(filtros or {}), "limit": 1000, "offset": inicio}
+        r = requests.get(f"{URL}/rest/v1/{tabela}", headers=_h(token), params=p, timeout=TIMEOUT)
+        if r.status_code == 401:
+            raise PermissionError
+        r.raise_for_status()
+        pagina = r.json()
+        linhas.extend(pagina)
+        if len(pagina) < 1000:
+            return linhas
+        inicio += 1000
 
 
 def trocar_senha(token, nova):
@@ -102,8 +109,8 @@ def carregar():
         "carteira_resumo": ler("carteira_resumo", tok),
         "carteira_placar_dia": ler("carteira_placar_dia", tok, {"data": f"gte.{cd.desde(45)}", "order": "data"}),
         "carteira_agenda_dia": ler("carteira_agenda_dia", tok, {"data": f"eq.{cd.hoje()}"}),
-        "carteira_clientes": ler("carteira_clientes", tok, {"valor_risco": "gt.0"}),
-        "carteira_interacoes": ler("carteira_interacoes", tok, {"data": f"gte.{cd.desde(45)}", "valido": "eq.true"}),
+        "carteira_clientes": ler("carteira_clientes", tok, dict([cd.FILTRO_CLIENTES])),
+        "carteira_interacoes": ler("carteira_interacoes", tok, {"valido": "eq.true"}),
     }
     return tab, tok
 
