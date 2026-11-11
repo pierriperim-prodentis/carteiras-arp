@@ -160,6 +160,18 @@ function telaAssessor(a) {
   return h;
 }
 
+/** O que o cliente disse nos atendimentos mais recentes (concorrente, motivo, risco). */
+function ultimoDosAtendimentos(a, nome) {
+  const it = (a.interacoes || []).filter(x => x.cliente === nome);     // já vem do mais novo para o mais antigo
+  const ult = campo => { const x = it.find(y => y[campo]); return x ? {v: x[campo], d: x.data} : null; };
+  const itens = [['Concorrente citado', ult('concorrente')], ['Motivo da redução', ult('motivo')],
+                 ['Nível de risco', ult('nivel_risco')], ['Apoio pedido', ult('apoio')]].filter(x => x[1]);
+  if (!itens.length) return '';
+  return `<div class="campos" style="background:#F6F2FC;border-radius:8px;padding:10px 12px">` +
+    itens.map(([l, x]) => `<div><span class="l">${l} · último atendimento</span><span class="v">${esc(x.v)}<span class="cod"> em ${dt(x.d)}</span></span></div>`).join('') +
+    `</div><div class="leg">Do cadastro da carteira:</div>`;
+}
+
 function telaFicha(a, nome) {
   prep(a);
   const f = a._cli[nome] || {cliente: nome}, r = a.resumo || {};
@@ -182,7 +194,7 @@ function telaFicha(a, nome) {
     ${kpi('Com outro assessor', f.outros_valor ? brl(f.outros_valor) : '—', 'no ano atual')}
   </div>
   <div class="grid2"><div class="card"><h2>Compras mês a mês (loja)</h2>${f.mensal ? graficoMensal({mensal: f.mensal, ano: r.ano, meses_fechados: r.meses_fechados}).replace('vendas da assessora nas lojas (Max Data)', 'compras do cliente nas lojas (Max Data)') : '<div class="vazio">Sem histórico.</div>'}</div>
-  <div class="card"><h2>Cadastro</h2><div class="campos">` +
+  <div class="card"><h2>Cadastro</h2>` + ultimoDosAtendimentos(a, nome) + `<div class="campos">` +
     [['Especialidade', f.especialidade], ['Assessor preferencial', f.assessor_pref], ['Tempo de relacionamento', f.tempo_relacionamento],
      ['Sistema de implantes', f.sist_implantes], ['Usa scanner?', [f.usa_scanner, f.marca_scanner].filter(Boolean).join(' · ')],
      ['Outras marcas', f.outras_marcas], ['Volume de implantes/mês', f.volume_implantes], ['Percepção sobre Neodent', f.percepcao_neodent],
