@@ -4,6 +4,9 @@ carteiras_dados.py — monta os dados da tela Carteiras (carteiras.html).
 Não depende do Streamlit: recebe as linhas das tabelas carteira_* (lidas com a
 chave do menuarp, ou com o login da assessora no app dela) e devolve o JSON
 que o HTML desenha. Usado pela página do menuarp e pelo app das assessoras.
+
+A tela é um componente (pasta componentes/carteiras): recebe os dados e
+informa a própria altura ao Streamlit, então a página tem uma rolagem só.
 """
 
 from __future__ import annotations
@@ -14,7 +17,8 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 TZ = ZoneInfo("America/Sao_Paulo")
-HTML = os.path.join(os.path.dirname(os.path.abspath(__file__)), "carteiras.html")
+PASTA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "componentes", "carteiras")
+HTML = os.path.join(PASTA, "index.html")
 ORDEM = ["Madê", "Bruna", "Luana", "Diego", "Francely", "Lizia", "Jarlene"]
 NOMES = {1: "Bruna", 2: "Madê", 3: "Luana", 4: "Diego", 5: "Francely", 6: "Lizia", 7: "Jarlene"}
 TABELAS = ("carteira_resumo", "carteira_placar_dia", "carteira_agenda_dia", "carteira_clientes", "carteira_interacoes")
@@ -70,9 +74,21 @@ def montar(tab: dict[str, list[dict]], modo: str = "gestor") -> dict:
 
 
 def html(dados: dict) -> str:
-    """O carteiras.html com os dados colocados no lugar do exemplo."""
+    """Arquivo solto para teste: o index.html com os dados no lugar do exemplo."""
     with open(HTML, encoding="utf-8") as f:
         modelo = f.read()
     ini, fim = modelo.index("/*DADOS*/") + len("/*DADOS*/"), modelo.index("/*FIM*/")
     js = json.dumps(dados, ensure_ascii=False, default=str).replace("</", "<\\/")
     return modelo[:ini] + js + modelo[fim:]
+
+
+_componente = None
+
+
+def mostrar(dados: dict, key: str = "carteiras") -> None:
+    """Desenha a tela no Streamlit (altura automática, sem rolagem própria)."""
+    global _componente
+    import streamlit.components.v1 as components
+    if _componente is None:
+        _componente = components.declare_component("carteiras", path=PASTA)
+    _componente(dados=dados, key=key, default=None)

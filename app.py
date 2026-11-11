@@ -12,7 +12,6 @@ Secrets (Streamlit Cloud > Settings > Secrets):
 
 import requests
 import streamlit as st
-import streamlit.components.v1 as components
 
 import carteiras_dados as cd
 
@@ -128,4 +127,4 @@ if tab is None:
     st.warning("Seu login ainda não está ligado a uma carteira. Fale com o Pi.")
     st.stop()
 
-components.html(cd.html(cd.montar(tab, "assessora")), height=900, scrolling=False)
+cd.mostrar(cd.montar(tab, "assessora"))

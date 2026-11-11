@@ -42,7 +42,7 @@
 <header><h1 id="titulo">Carteiras</h1><div class="sub" id="sub"></div></header>
 <main id="app"></main>
 <script>
-const DADOS = /*DADOS*/{"modo":"gestor","hoje":"2026-11-10","atualizado":null,"assessores":[]}/*FIM*/;
+let DADOS = /*DADOS*/{"modo":"gestor","hoje":"2026-11-10","atualizado":null,"assessores":[]}/*FIM*/;
 
 const $ = s => document.querySelector(s);
 const brl = v => v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', {maximumFractionDigits: 0});
@@ -163,7 +163,7 @@ function telaTodos() {
 }
 
 let atual = DADOS.modo === 'gestor' ? 'todos' : (DADOS.assessores[0] || {}).id;
-function render() {
+var render = function () {
   $('#sub').textContent = (DADOS.atualizado ? 'Atualizado em ' + new Date(DADOS.atualizado).toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'}) : 'Sem dados do robô ainda') +
     ' · o robô lê as planilhas de hora em hora (7h às 19h, dias úteis)';
   if (!DADOS.assessores.length) { $('#app').innerHTML = '<div class="card"><div class="vazio">Ainda não há dados. Assim que o robô rodar, os números aparecem aqui.</div></div>'; return; }
@@ -178,16 +178,35 @@ function render() {
   $('#app').innerHTML = h;
   document.querySelectorAll('[data-id]').forEach(e => e.onclick = () => { atual = e.dataset.id; render(); window.scrollTo(0, 0); });
 }
-render();
-
-// Ajusta a altura da moldura do Streamlit ao conteúdo: fica só a rolagem da página.
+// Dois jeitos de receber os dados:
+//  - componente do Streamlit (menuarp e app das assessoras): chegam pela mensagem "render";
+//  - arquivo solto (teste): já vêm escritos acima, no lugar do exemplo.
+let alturaEnviada = 0;
+function enviar(tipo, extra) { window.parent.postMessage(Object.assign({isStreamlitMessage: true, type: tipo}, extra || {}), '*'); }
 function ajustarAltura() {
-  const h = Math.ceil(document.documentElement.scrollHeight) + 4;
-  window.parent.postMessage({isStreamlitMessage: true, type: 'streamlit:setFrameHeight', height: h}, '*');
+  // mede só o conteúdo (até o fim do <main>), não a janela — senão o quadro cresce sem parar
+  const h = Math.ceil($('main').getBoundingClientRect().bottom + window.scrollY) + 8;
+  if (Math.abs(h - alturaEnviada) > 2) { alturaEnviada = h; enviar('streamlit:setFrameHeight', {height: h}); }
 }
-new ResizeObserver(ajustarAltura).observe(document.body);
-window.addEventListener('load', ajustarAltura);
-ajustarAltura();
+window.addEventListener('message', ev => {
+  const m = ev.data;
+  if (!m || m.type !== 'streamlit:render') return;
+  const novo = (m.args || {}).dados;
+  if (novo) {
+    const trocouModo = novo.modo !== DADOS.modo;
+    Object.assign(DADOS, novo);
+    if (trocouModo || !DADOS.assessores.some(a => String(a.id) === String(atual)))
+      atual = DADOS.modo === 'gestor' ? 'todos' : (DADOS.assessores[0] || {}).id;
+    render();
+  }
+  ajustarAltura();
+});
+const _render = render;
+render = function () { _render(); setTimeout(ajustarAltura, 0); };
+window.addEventListener('resize', ajustarAltura);
+if (window.ResizeObserver) new ResizeObserver(ajustarAltura).observe($('main'));
+render();
+enviar('streamlit:componentReady', {apiVersion: 1});
 </script>
 </body>
 </html>
