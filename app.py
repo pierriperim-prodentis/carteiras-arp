@@ -16,8 +16,12 @@ import streamlit as st
 import carteiras_dados as cd
 
 st.set_page_config(page_title="Minha carteira — ARP", page_icon="🦷", layout="wide")
-st.markdown("""<style>#MainMenu, footer, [data-testid="stToolbar"]{visibility:hidden;height:0}
-[data-testid="stMainBlockContainer"]{padding-top:1rem}</style>""", unsafe_allow_html=True)
+st.markdown("""<style>
+#MainMenu, footer, [data-testid="stHeader"], [data-testid="stToolbar"]{visibility:hidden;height:0}
+section[data-testid="stMain"], [data-testid="stAppViewContainer"]{background:#F5F3FA !important}
+[data-testid="stMainBlockContainer"]{padding:0 !important;max-width:100% !important;width:100% !important}
+[data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"]{gap:0 !important}
+</style>""", unsafe_allow_html=True)
 
 URL = str(st.secrets.get("SUPABASE_URL", "")).rstrip("/")
 CHAVE = str(st.secrets.get("SUPABASE_ANON_KEY", "")).strip()
