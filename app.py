@@ -15,12 +15,23 @@ import streamlit as st
 
 import carteiras_dados as cd
 
-st.set_page_config(page_title="Minha carteira — ARP", page_icon="🦷", layout="wide")
+st.set_page_config(page_title="Minha carteira — ARP", page_icon="🦷", layout="wide", initial_sidebar_state="expanded")
 st.markdown("""<style>
 #MainMenu, footer, [data-testid="stHeader"], [data-testid="stToolbar"]{visibility:hidden;height:0}
 section[data-testid="stMain"], [data-testid="stAppViewContainer"]{background:#F5F3FA !important}
 [data-testid="stMainBlockContainer"]{padding:0 !important;max-width:100% !important;width:100% !important}
 [data-testid="stMainBlockContainer"] [data-testid="stVerticalBlock"]{gap:0 !important}
+/* menu lateral fixo e estreito: sem botão de encolher (o de reabrir ficava no cabeçalho escondido) */
+section[data-testid="stSidebar"], section[data-testid="stSidebar"][aria-expanded="false"]{
+  width:210px !important;min-width:210px !important;max-width:210px !important;
+  transform:none !important;margin-left:0 !important;visibility:visible !important;display:flex !important}
+section[data-testid="stSidebar"] > div, [data-testid="stSidebarContent"], [data-testid="stSidebarUserContent"]{width:210px !important;min-width:210px !important;transform:none !important;opacity:1 !important;visibility:visible !important}
+[data-testid="stSidebarCollapseButton"], [data-testid="stSidebarCollapsedControl"],
+[data-testid="stExpandSidebarButton"], [data-testid="stSidebarHeader"]{display:none !important}
+section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"]{padding:24px 14px !important;box-sizing:border-box}
+[data-testid="stSidebarContent"]{padding:0 !important;overflow-x:hidden !important}
+section[data-testid="stSidebar"] a{word-break:break-all}
+section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] button{font-size:13px !important}
 </style>""", unsafe_allow_html=True)
 
 URL = str(st.secrets.get("SUPABASE_URL", "")).rstrip("/")
