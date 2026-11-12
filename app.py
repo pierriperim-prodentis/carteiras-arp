@@ -25,12 +25,14 @@ section[data-testid="stMain"], [data-testid="stAppViewContainer"]{background:#F5
 section[data-testid="stSidebar"], section[data-testid="stSidebar"][aria-expanded="false"]{
   width:210px !important;min-width:210px !important;max-width:210px !important;
   transform:none !important;margin-left:0 !important;visibility:visible !important;display:flex !important}
-section[data-testid="stSidebar"] > div, [data-testid="stSidebarContent"], [data-testid="stSidebarUserContent"]{width:210px !important;min-width:210px !important;transform:none !important;opacity:1 !important;visibility:visible !important}
+[data-testid="stSidebarContent"]{width:210px !important;min-width:210px !important;transform:none !important;opacity:1 !important;visibility:visible !important}
+[data-testid="stSidebarUserContent"]{width:100% !important}
+[data-testid="stSidebarResizeHandle"]{display:none !important}
 [data-testid="stSidebarCollapseButton"], [data-testid="stSidebarCollapsedControl"],
 [data-testid="stExpandSidebarButton"], [data-testid="stSidebarHeader"]{display:none !important}
-section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"]{padding:24px 14px !important;box-sizing:border-box}
+section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"]{padding:24px 12px !important;box-sizing:border-box}
 [data-testid="stSidebarContent"]{padding:0 !important;overflow-x:hidden !important}
-section[data-testid="stSidebar"] a{word-break:break-all}
+section[data-testid="stSidebar"] a{font-size:11.5px;overflow-wrap:anywhere}
 section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] button{font-size:13px !important}
 </style>""", unsafe_allow_html=True)
 
@@ -128,7 +130,7 @@ def carregar():
 
 tab, token = carregar()
 with st.sidebar:
-    st.caption(f"Conectada como **{st.session_state['sessao'].get('user', {}).get('email', '')}**")
+    st.caption(f"Conectada como  \n**{st.session_state['sessao'].get('user', {}).get('email', '')}**")
     if st.button("🔄 Atualizar"):
         st.rerun()
     with st.expander("🔑 Trocar minha senha"):
