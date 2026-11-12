@@ -44,6 +44,12 @@
   .campos div{display:flex;flex-direction:column;gap:2px} .campos .l{font-size:11px;color:var(--sub);text-transform:uppercase;letter-spacing:.04em} .campos .v{font-size:14px}
   .k4{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
   .titulo-ficha{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center} .titulo-ficha h2{font-size:18px}
+  .sist{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .sist button{font:inherit;text-align:left;background:#FAF8FD;border:1px solid var(--borda);border-radius:10px;padding:12px 14px;cursor:pointer;display:flex;flex-direction:column;gap:3px;color:var(--txt)}
+  .sist button:hover{border-color:#B9A8D6} .sist button.on{border-color:var(--roxo);box-shadow:inset 0 0 0 1px var(--roxo);background:#F3EDFB}
+  .sist .n{font-size:24px;font-weight:700} .sist .t{font-size:13px;font-weight:600} .sist .d{font-size:12px;color:var(--sub)}
+  .sist button.alvo .n{color:var(--verm)}
+  .nsist{font:inherit;background:none;border:0;padding:0;cursor:pointer;color:var(--roxo2);font-weight:600;text-decoration:underline dotted}
   @media(max-width:640px){main{padding:14px}header{padding:16px}.grid2{grid-template-columns:1fr}td,th{padding:6px 4px}}
 </style>
 </head>
@@ -149,6 +155,7 @@ function telaAssessor(a) {
   h += `<div class="card"><h2>Clientes em risco</h2>` + (a._risco.length ? `<table><thead><tr><th>Cliente</th><th>Status</th><th class="num">Risco/mês</th><th>Contato</th></tr></thead><tbody>` +
     a._risco.slice(0, 15).map(x => `<tr><td>${cli(x.cliente)}<div class="cod">${esc(x.lojas || '')}</div></td><td>${esc(x.status || '')}</td><td class="num">${brl(x.valor_risco)}</td><td><span class="tag ${x.situacao_contato === 'Em dia' || x.situacao_contato === 'Agendado' ? 'ok' : x.situacao_contato === 'Vencido' ? 'ruim' : 'meio'}">${esc(x.situacao_contato || '')}</span><div class="cod">${x.ultima_interacao ? 'último: ' + dt(x.ultima_interacao) : ''}</div></td></tr>`).join('') +
     '</tbody></table>' : '<div class="vazio">Nenhum cliente em risco.</div>') + '</div></div>';
+  h += cardSist(a);
   const it = a.interacoes || [];
   h += `<div class="card"><h2>Últimos atendimentos</h2>` + (it.length ? `<table><thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Resultado</th><th>Origem</th><th>Próxima ação</th></tr></thead><tbody>` +
     it.slice(0, 15).map(x => `<tr><td>${dt(x.data)}</td><td>${cli(x.cliente)}</td><td>${esc(x.tipo || '')}</td><td>${esc(x.resultado || '')}</td><td>${esc((x.origem || '').split(' ')[0])}</td><td>${esc(x.proxima_acao || '')}${x.proximo_contato ? '<div class="cod">em ' + dt(x.proximo_contato) + '</div>' : ''}</td></tr>`).join('') +
@@ -227,7 +234,62 @@ function telaTodos() {
       <td class="num"><span class="tag ${a.resumo && a.resumo.var_pct >= 0 ? 'ok' : 'ruim'}">${pct(a.resumo && a.resumo.var_pct)}</span></td>
       <td class="num">${brl(c.riscoSemV)}<div class="cod">${c.riscoSem.length} clientes</div></td></tr>`).join('') +
     '</tbody></table><div class="leg">Clique num assessor para abrir o bloco dele.</div></div>';
+  h += tabelaSistEquipe();
   return h;
+}
+
+
+// ---- Sistema de implantes (migração CM → GM) ----
+const GRUPOS_SIST = [
+  {k: 'socm', t: 'Só CM', d: 'prioridade da migração para GM', alvo: true},
+  {k: 'cmgm', t: 'CM + GM', d: 'já migrando: ampliar o GM'},
+  {k: 'sogm', t: 'Só GM', d: 'já migrou: manter'},
+  {k: 'outros', t: 'Outros sistemas', d: 'HE e demais: converter'},
+  {k: 'ni', t: 'Não informado', d: 'perguntar no próximo atendimento'}];
+function grupoSist(v) {
+  const s = String(v || '').toUpperCase();
+  if (!s.trim()) return 'ni';
+  const cm = /\bCM\b/.test(s), gm = /\bGM\b/.test(s);
+  return cm && gm ? 'cmgm' : cm ? 'socm' : gm ? 'sogm' : 'outros';
+}
+function contarSist(a) {
+  prep(a);
+  if (!a._sist) {
+    a._sist = {}; GRUPOS_SIST.forEach(g => a._sist[g.k] = []);
+    (a.clientes || []).forEach(c => a._sist[grupoSist(c.sist_implantes)].push(c));
+    Object.values(a._sist).forEach(l => l.sort((x, y) => (y.media_ant || 0) - (x.media_ant || 0) || (y.media_atual || 0) - (x.media_atual || 0)));
+  }
+  return a._sist;
+}
+let abertoSist = null;
+function cardSist(a) {
+  const S = contarSist(a), tot = (a.clientes || []).length, inf = tot - S.ni.length;
+  let h = `<div class="card"><h2>Sistema de implantes</h2>
+    <div class="leg">${inf} de ${tot} clientes com o sistema informado (${tot ? Math.round(100 * inf / tot) : 0}%). Clique num grupo para ver os clientes. Quem usa CM e GM conta só em "CM + GM".</div>
+    <div class="sist">` + GRUPOS_SIST.map(g => {
+      const l = S[g.k], m = l.reduce((t, c) => t + (c.media_ant || 0), 0);
+      return `<button class="${g.alvo ? 'alvo ' : ''}${abertoSist === g.k ? 'on' : ''}" data-sist="${g.k}"><span class="t">${g.t}</span><span class="n">${l.length}</span><span class="d">${g.d}</span>${l.length && g.k !== 'ni' ? `<span class="d">média ${brl(m)}/mês</span>` : ''}</button>`;
+    }).join('') + '</div>';
+  if (abertoSist) {
+    const g = GRUPOS_SIST.find(x => x.k === abertoSist), l = S[abertoSist], max = 60, ano = (a.resumo || {}).ano || 0;
+    h += `<div class="titulo-ficha"><h2>${g.t} · ${l.length} clientes</h2><button class="voltar" data-sist="${g.k}">Fechar lista</button></div>` + (l.length ?
+      `<table><thead><tr><th>Cliente</th><th>Sistema</th><th>Status</th><th class="num">Média ${ano - 1}</th><th class="num">Média ${ano}</th><th>Última compra</th><th>Contato</th></tr></thead><tbody>` +
+      l.slice(0, max).map(c => `<tr><td>${cli(c.cliente)}<div class="cod">${esc(c.lojas || '')}</div></td><td>${esc(c.sist_implantes || '—')}</td><td>${esc(c.status || '')}</td>
+        <td class="num">${brl(c.media_ant)}</td><td class="num">${brl(c.media_atual)}</td><td>${c.ultima_compra ? c.ultima_compra.slice(5, 7) + '/' + c.ultima_compra.slice(0, 4) : '—'}</td>
+        <td>${esc(c.situacao_contato || '')}</td></tr>`).join('') + '</tbody></table>' +
+      (l.length > max ? `<div class="leg">Mostrando os ${max} que mais compram (média ${ano - 1}). Use a busca para abrir qualquer outro.</div>` : '') : '<div class="vazio">Nenhum cliente neste grupo.</div>');
+  }
+  return h + '</div>';
+}
+function tabelaSistEquipe() {
+  const L = DADOS.assessores.map(a => ({a, S: contarSist(a), tot: (a.clientes || []).length}));
+  const soma = k => L.reduce((t, x) => t + x.S[k].length, 0), totG = L.reduce((t, x) => t + x.tot, 0);
+  const cel = (a, k, n) => `<td class="num">${n ? `<button class="nsist" data-aid="${a.id}" data-g="${k}">${n}</button>` : '0'}</td>`;
+  return `<div class="card"><h2>Sistema de implantes por assessor</h2><table><thead><tr><th>Assessor</th>` + GRUPOS_SIST.map(g => `<th class="num">${g.t}</th>`).join('') + `<th class="num">% informado</th></tr></thead><tbody>` +
+    L.map(({a, S, tot}) => `<tr><td><b>${esc(a.nome)}</b></td>` + GRUPOS_SIST.map(g => cel(a, g.k, S[g.k].length)).join('') +
+      `<td class="num">${tot ? Math.round(100 * (tot - S.ni.length) / tot) : 0}%</td></tr>`).join('') +
+    `<tr><td><b>Equipe</b></td>` + GRUPOS_SIST.map(g => `<td class="num"><b>${soma(g.k)}</b></td>`).join('') + `<td class="num"><b>${totG ? Math.round(100 * (totG - soma('ni')) / totG) : 0}%</b></td></tr>` +
+    '</tbody></table><div class="leg">Clique num número para abrir a lista de clientes daquele assessor.</div></div>';
 }
 
 let atual = DADOS.modo === 'gestor' ? 'todos' : (DADOS.assessores[0] || {}).id;
@@ -245,7 +307,10 @@ var render = function () {
   h += atual === 'todos' || !a ? telaTodos() : ficha ? telaFicha(a, ficha) : telaAssessor(a);
   $('#app').innerHTML = h;
   const topo = () => { try { $('header').scrollIntoView({block: 'start'}); } catch (e) { window.scrollTo(0, 0); } };
-  document.querySelectorAll('[data-id]').forEach(e => e.onclick = () => { atual = e.dataset.id; ficha = null; render(); topo(); });
+  document.querySelectorAll('[data-id]').forEach(e => e.onclick = () => { atual = e.dataset.id; ficha = null; abertoSist = null; render(); topo(); });
+  document.querySelectorAll('[data-sist]').forEach(e => e.onclick = () => { abertoSist = abertoSist === e.dataset.sist ? null : e.dataset.sist; render(); });
+  document.querySelectorAll('[data-aid]').forEach(e => e.onclick = () => { atual = e.dataset.aid; ficha = null; abertoSist = e.dataset.g; render();
+    const c = document.querySelector('.sist'); if (c) c.scrollIntoView({block: 'start'}); });
   document.querySelectorAll('[data-cli]').forEach(e => e.onclick = () => { ficha = decodeURIComponent(e.dataset.cli); render(); topo(); });
   document.querySelectorAll('[data-voltar]').forEach(e => e.onclick = () => { ficha = null; render(); topo(); });
   const b = $('#busca');

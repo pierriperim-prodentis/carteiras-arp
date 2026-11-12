@@ -40,8 +40,8 @@ NUMEROS = ("valor_risco", "media_ant", "media_atual", "var_acum", "ciclo", "outr
            "media_2023", "media_2024", "acum_ant", "acum_atual", "meses_sem_compra")
 CAMPOS_INTER = ("data", "cliente", "tipo", "resultado", "origem", "motivo", "concorrente", "nivel_risco",
                 "proxima_acao", "apoio", "proximo_contato", "observacoes")
-# clientes que vão para a tela (ficha e busca): quem comprou nos 2 anos, está em risco ou na agenda
-FILTRO_CLIENTES = ("or", "(media_ant.gt.0,media_atual.gt.0,valor_risco.gt.0,prioridade.gt.0)")
+# clientes que vão para a tela (ficha e busca): quem comprou nos 2 anos, está em risco, na agenda ou tem sistema de implantes informado
+FILTRO_CLIENTES = ("or", "(media_ant.gt.0,media_atual.gt.0,valor_risco.gt.0,prioridade.gt.0,sist_implantes.not.is.null)")
 
 
 def _ficha(r: dict) -> dict:
