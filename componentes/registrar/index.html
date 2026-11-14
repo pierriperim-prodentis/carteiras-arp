@@ -75,25 +75,25 @@ function blocoCliente() {
   const q = chave(S.busca);
   const achados = q ? A.clientes.filter(c => chave(c.n).includes(q)).slice(0, 8) : A.agenda.map(n => A.clientes.find(c => c.n === n)).filter(Boolean).slice(0, 8);
   const exato = q && A.clientes.some(c => chave(c.n) === q);
-  return `<div class="campo"><label class="lbl" for="busca">Cliente</label>
+  return `<div class="campo" id="campo-cliente"><label class="lbl" for="busca">Cliente</label>
     <input id="busca" placeholder="🔎 Digite o nome do cliente" value="${esc(S.busca)}" autocomplete="off" autocapitalize="words">
     ${achados.length || (q.length >= 3 && !exato) ? `<div class="lista">${!q ? '<div class="cab">Da sua agenda de hoje (ainda não atendidos)</div>' : ''}
       ${achados.map(c => `<button data-cli="${esc(c.n)}"><span class="nm">${esc(c.n)}</span><span class="d">${esc(c.st || '—')}${c.ult ? ' · última compra ' + esc(c.ult) : ''}</span></button>`).join('')}
       ${q.length >= 3 && !exato ? `<button class="novo" data-novo="1"><span class="nm">+ Cadastrar "${esc(S.busca.trim())}" como cliente novo</span><span class="d">Entra na carteira como Potencial</span></button>` : ''}
     </div>` : ''}
-    ${S.tentou && !S.cliente ? '<span class="erro">Escolha o cliente.</span>' : ''}</div>`;
+    ${S.tentou && !S.cliente ? `<span class="erro">${S.busca.trim() ? 'Toque no nome do cliente na lista (ou em "+ Cadastrar como cliente novo").' : 'Escolha o cliente.'}</span>` : ''}</div>`;
 }
 
 function telaForm() {
   const det = [S.sist, S.conc, S.motivo, S.risco, S.obs].filter(Boolean).length;
   return `<div class="bloco">${blocoCliente()}
     <div class="campo"><span class="lbl">Quem procurou?</span><div class="seg">${[['Ativo (eu procurei)', 'Eu procurei'], ['Receptivo (cliente procurou)', 'Cliente procurou']].map(([v, l]) => `<button class="${S.origem === v ? 'on' : ''}" data-c="origem" data-v="${v}">${l}</button>`).join('')}</div></div>
-    <div class="campo"><span class="lbl">Como foi?</span>${chips('tipo', ['Whatsapp', 'Telefone', 'Visita', 'Loja', 'Reunião', 'E-mail', 'Evento / Curso'])}${S.tentou && !S.tipo ? '<span class="erro">Escolha como foi o contato.</span>' : ''}</div>
-    <div class="campo"><span class="lbl">Resultado</span>${chips('res', ['Pedido fechado', 'Orçamento enviado', 'Vai retornar', 'Sem resposta', 'Sem interesse no momento', 'Só relacionamento', 'Reclamação'])}${S.tentou && !S.res ? '<span class="erro">Escolha o resultado.</span>' : ''}</div>
+    <div class="campo" id="campo-tipo"><span class="lbl">Como foi?</span>${chips('tipo', ['Whatsapp', 'Telefone', 'Visita', 'Loja', 'Reunião', 'E-mail', 'Evento / Curso'])}${S.tentou && !S.tipo ? '<span class="erro">Escolha como foi o contato.</span>' : ''}</div>
+    <div class="campo" id="campo-res"><span class="lbl">Resultado</span>${chips('res', ['Pedido fechado', 'Orçamento enviado', 'Vai retornar', 'Sem resposta', 'Sem interesse no momento', 'Só relacionamento', 'Reclamação'])}${S.tentou && !S.res ? '<span class="erro">Escolha o resultado.</span>' : ''}</div>
     <div class="campo"><label class="lbl" for="prox">Próximo contato <small>(opcional)</small></label><input type="date" id="prox" value="${S.prox}"></div>
   </div>
   <button class="mais" id="mais">+ Mais detalhes (sistema, concorrente, observações)${det ? ' · ' + det + ' preenchido(s)' : ''}</button>
-  ${erro ? `<div class="aviso" style="background:#FDECEA;color:#B42318">${esc(erro)}</div>` : ''}
+  ${erro ? `<div class="aviso" role="alert" style="background:#FDECEA;color:#B42318;font-weight:600">${esc(erro)}</div>` : ''}
   <button class="btn" id="salvar" ${pendente ? 'disabled' : ''}>${pendente ? 'Salvando…' : 'Salvar atendimento'}</button>`;
 }
 
@@ -155,7 +155,18 @@ function ligar() {
 
 function salvar() {
   S.tentou = true; erro = '';
-  if (!S.cliente || !S.tipo || !S.res) { render(); return; }
+  if (!S.cliente && S.busca.trim()) {                 // digitou o nome exato de um cliente: seleciona sozinho
+    const ex = A.clientes.filter(c => chave(c.n) === chave(S.busca));
+    if (ex.length === 1) { S.cliente = ex[0].n; S.novo = false; }
+  }
+  const faltas = [[!S.cliente, 'cliente', 'campo-cliente'], [!S.tipo, 'como foi', 'campo-tipo'], [!S.res, 'resultado', 'campo-res']].filter(x => x[0]);
+  if (faltas.length) {
+    erro = 'Falta escolher: ' + faltas.map(x => x[1]).join(', ') + '.';
+    render();
+    const alvo = document.getElementById(faltas[0][2]);
+    if (alvo) setTimeout(() => { try { alvo.scrollIntoView({block: 'center', behavior: 'smooth'}); } catch (e) { alvo.scrollIntoView(); } }, 50);
+    return;
+  }
   pendente = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
   const registro = {cliente: S.cliente, cliente_novo: S.novo, origem: S.origem, tipo: S.tipo, resultado: S.res,
     proximo_contato: S.prox || null, sist_implantes: S.sist, concorrente: S.conc || null, motivo: S.motivo || null,
