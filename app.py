@@ -5,9 +5,10 @@ Cada assessora entra com e-mail e senha (login do Supabase) e vê SÓ os
 números dela: a trava fica no próprio banco (Row Level Security), não aqui.
 Este código pode ser público: não tem nenhuma chave secreta.
 
-Formulário "Registrar atendimento" (pensado para o celular): por enquanto só
-aparece no link de teste (…streamlit.app/?teste=1) e grava com teste = true,
-ou seja, não vai para a planilha nem para o placar oficial.
+Formulário "Registrar atendimento" (pensado para o celular): grava em
+carteira_registros e o robô da Base copia para a aba INTERACOES da assessora.
+No link de teste (…streamlit.app/?teste=1) grava com teste = true: não vai
+para a planilha nem para o placar oficial.
 
 "Lembrar neste aparelho": guarda no navegador só a chave de acesso do login
 (refresh token, que muda a cada uso), nunca a senha. "Sair" apaga a chave.
@@ -247,7 +248,7 @@ dados = cd.montar(tab, "assessora")
 a = dados["assessores"][0] if dados["assessores"] else None
 
 aba = "carteira"
-if TESTE and a:
+if a:
     with st.container(key="abas"):
         esc = st.segmented_control("Tela", ["📝 Registrar", "📊 Minha carteira"], default="📝 Registrar",
                                    key="aba", label_visibility="collapsed")
