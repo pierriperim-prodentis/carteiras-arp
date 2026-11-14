@@ -51,6 +51,24 @@
   .sist button.alvo .n{color:var(--verm)}
   .nsist{font:inherit;background:none;border:0;padding:0;cursor:pointer;color:var(--roxo2);font-weight:600;text-decoration:underline dotted}
   @media(max-width:640px){main{padding:14px}header{padding:16px}.grid2{grid-template-columns:1fr}td,th{padding:6px 4px}}
+  .cel-so{display:none}
+  @media(max-width:640px){
+    table thead{display:none}
+    table,tbody{display:block}
+    tr{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:10px 2px;border-bottom:1px solid #F0EDF5}
+    td{display:block;padding:0;border:0;font-size:13px;color:var(--sub)}
+    td.num{text-align:left;color:var(--txt);font-weight:600}
+    td.nome{order:-1;flex:0 0 100%;color:var(--txt)}
+    td.nome a.cli,td.nome b{font-size:14px;font-weight:600}
+    td.nome .cod{display:inline-block;margin-left:6px;white-space:nowrap}
+    td[data-l]::before{content:attr(data-l);font-weight:400;color:var(--sub)}
+    .cel-oculta{display:none}
+    .cel-so{display:inline;font-weight:400;color:var(--sub)}
+    tr.clic:hover td{background:none}
+    .sist{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .sist button{padding:10px;gap:2px;border-radius:10px}
+    .sist .n{font-size:20px} .sist .t{font-size:12px} .sist .d{font-size:11px;line-height:1.3}
+  }
 </style>
 </head>
 <body>
@@ -150,15 +168,15 @@ function telaAssessor(a) {
         <div class="card"><h2>Vendas por mês</h2>${graficoMensal(r)}</div></div>`;
   const ag = a.agenda_hoje || [];
   h += `<div class="grid2"><div class="card"><h2>Agenda de hoje${DADOS.modo === 'gestor' ? ' (congelada às 7h30)' : ''}</h2>` + (ag.length ? `<table><thead><tr><th>#</th><th>Cliente</th><th>Motivo</th><th class="num">Risco/mês</th><th>Atendido</th></tr></thead><tbody>` +
-    ag.map(x => `<tr><td>${x.posicao}</td><td>${cli(x.cliente)}<div class="cod">${esc(x.status || '')}</div></td><td>${esc(x.motivo || '')}</td><td class="num">${x.valor_risco ? brl(x.valor_risco) : '—'}</td><td>${x.atendido ? '<span class="tag ok">✓ sim</span>' : '<span class="tag ruim">não</span>'}</td></tr>`).join('') +
+    ag.map(x => `<tr><td class="cel-oculta">${x.posicao}</td><td class="nome">${cli(x.cliente)}<div class="cod">${esc(x.status || '')}</div></td><td>${esc(x.motivo || '')}</td><td class="num">${x.valor_risco ? brl(x.valor_risco) + '<span class="cel-so">/mês</span>' : '—'}</td><td>${x.atendido ? '<span class="tag ok">✓ sim</span>' : '<span class="tag ruim">não</span>'}</td></tr>`).join('') +
     '</tbody></table>' : DADOS.modo === 'gestor' ? '<div class="vazio">A agenda do dia é congelada às 7h30 dos dias úteis.</div>' : '<div class="vazio">A agenda de hoje ainda não está disponível.</div>') + '</div>';
   h += `<div class="card"><h2>Clientes em risco</h2>` + (a._risco.length ? `<table><thead><tr><th>Cliente</th><th>Status</th><th class="num">Risco/mês</th><th>Contato</th></tr></thead><tbody>` +
-    a._risco.slice(0, 15).map(x => `<tr><td>${cli(x.cliente)}<div class="cod">${esc(x.lojas || '')}</div></td><td>${esc(x.status || '')}</td><td class="num">${brl(x.valor_risco)}</td><td><span class="tag ${x.situacao_contato === 'Em dia' || x.situacao_contato === 'Agendado' ? 'ok' : x.situacao_contato === 'Vencido' ? 'ruim' : 'meio'}">${esc(x.situacao_contato || '')}</span><div class="cod">${x.ultima_interacao ? 'último: ' + dt(x.ultima_interacao) : ''}</div></td></tr>`).join('') +
+    a._risco.slice(0, 15).map(x => `<tr><td class="nome">${cli(x.cliente)}<div class="cod">${esc(x.lojas || '')}</div></td><td>${esc(x.status || '')}</td><td class="num">${brl(x.valor_risco)}<span class="cel-so">/mês</span></td><td><span class="tag ${x.situacao_contato === 'Em dia' || x.situacao_contato === 'Agendado' ? 'ok' : x.situacao_contato === 'Vencido' ? 'ruim' : 'meio'}">${esc(x.situacao_contato || '')}</span><div class="cod">${x.ultima_interacao ? 'último: ' + dt(x.ultima_interacao) : ''}</div></td></tr>`).join('') +
     '</tbody></table>' : '<div class="vazio">Nenhum cliente em risco.</div>') + '</div></div>';
   h += cardSist(a);
   const it = a.interacoes || [];
   h += `<div class="card"><h2>Últimos atendimentos</h2>` + (it.length ? `<table><thead><tr><th>Data</th><th>Cliente</th><th>Tipo</th><th>Resultado</th><th>Origem</th><th>Próxima ação</th></tr></thead><tbody>` +
-    it.slice(0, 15).map(x => `<tr><td>${dt(x.data)}</td><td>${cli(x.cliente)}</td><td>${esc(x.tipo || '')}</td><td>${esc(x.resultado || '')}</td><td>${esc((x.origem || '').split(' ')[0])}</td><td>${esc(x.proxima_acao || '')}${x.proximo_contato ? '<div class="cod">em ' + dt(x.proximo_contato) + '</div>' : ''}</td></tr>`).join('') +
+    it.slice(0, 15).map(x => `<tr><td>${dt(x.data)}</td><td class="nome">${cli(x.cliente)}</td><td>${esc(x.tipo || '')}</td><td>${esc(x.resultado || '')}</td><td>${esc((x.origem || '').split(' ')[0])}</td><td>${esc(x.proxima_acao || '')}${x.proximo_contato ? '<div class="cod">em ' + dt(x.proximo_contato) + '</div>' : ''}</td></tr>`).join('') +
     '</tbody></table>' : '<div class="vazio">Nenhum atendimento registrado ainda.</div>') + '</div>';
   if (r.status) {
     const ord = ['Em alta','Estável','Novo','Reativado','Recebido','Em queda','Parado','Perdido','Ciclo longo','Comprou na fábrica','Migrou','Transferido','Inativo','Sem venda'];
@@ -226,7 +244,7 @@ function telaTodos() {
     ${kpi('Risco sem contato', brl(t('riscoSemV')), 'por mês, somando a equipe')}
   </div>`;
   h += `<div class="card"><h2>Placar da equipe</h2><table><thead><tr><th>Assessor</th><th class="num">Hoje</th><th></th><th class="num">Semana</th><th class="num">Agenda hoje</th><th class="num">Efetivos sem.</th><th class="num">Pedidos sem.</th><th class="num">Vendas no ano</th><th class="num">Risco sem contato</th></tr></thead><tbody>` +
-    L.map(({a, c}) => `<tr class="clic" data-id="${a.id}"><td><b>${esc(a.nome)}</b></td>
+    L.map(({a, c}) => `<tr class="clic" data-id="${a.id}"><td class="nome"><b>${esc(a.nome)}</b></td>
       <td class="num"><span class="tag ${classe(c.ph.atendimentos, c.ph.meta)}">${c.ph.atendimentos}/${c.ph.meta}</span></td>
       <td><div class="bar"><i style="width:${c.ph.meta ? Math.min(100, 100 * c.ph.atendimentos / c.ph.meta) : 0}%"></i></div></td>
       <td class="num">${c.semAt}/${c.semMeta}</td><td class="num">${c.ph.agenda_total ? c.ph.agenda_atendidos + '/' + c.ph.agenda_total : '—'}</td>
@@ -274,9 +292,9 @@ function cardSist(a) {
     const g = GRUPOS_SIST.find(x => x.k === abertoSist), l = S[abertoSist], max = 60, ano = (a.resumo || {}).ano || 0;
     h += `<div class="titulo-ficha"><h2>${g.t} · ${l.length} clientes</h2><button class="voltar" data-sist="${g.k}">Fechar lista</button></div>` + (l.length ?
       `<table><thead><tr><th>Cliente</th><th>Sistema</th><th>Status</th><th class="num">Média ${ano - 1}</th><th class="num">Média ${ano}</th><th>Última compra</th><th>Contato</th></tr></thead><tbody>` +
-      l.slice(0, max).map(c => `<tr><td>${cli(c.cliente)}<div class="cod">${esc(c.lojas || '')}</div></td><td>${esc(c.sist_implantes || '—')}</td><td>${esc(c.status || '')}</td>
-        <td class="num">${brl(c.media_ant)}</td><td class="num">${brl(c.media_atual)}</td><td>${c.ultima_compra ? c.ultima_compra.slice(5, 7) + '/' + c.ultima_compra.slice(0, 4) : '—'}</td>
-        <td>${esc(c.situacao_contato || '')}</td></tr>`).join('') + '</tbody></table>' +
+      l.slice(0, max).map(c => `<tr><td class="nome">${cli(c.cliente)}<div class="cod">${esc(c.lojas || '')}</div></td><td class="cel-oculta">${esc(c.sist_implantes || '—')}</td><td>${esc(c.status || '')}</td>
+        <td class="num" data-l="Média ${ano - 1}: ">${brl(c.media_ant)}</td><td class="num cel-oculta">${brl(c.media_atual)}</td><td class="cel-oculta">${c.ultima_compra ? c.ultima_compra.slice(5, 7) + '/' + c.ultima_compra.slice(0, 4) : '—'}</td>
+        <td class="cel-oculta">${esc(c.situacao_contato || '')}</td></tr>`).join('') + '</tbody></table>' +
       (l.length > max ? `<div class="leg">Mostrando os ${max} que mais compram (média ${ano - 1}). Use a busca para abrir qualquer outro.</div>` : '') : '<div class="vazio">Nenhum cliente neste grupo.</div>');
   }
   return h + '</div>';
