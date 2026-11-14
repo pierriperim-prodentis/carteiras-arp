@@ -250,9 +250,13 @@ a = dados["assessores"][0] if dados["assessores"] else None
 aba = "carteira"
 if a:
     with st.container(key="abas"):
-        esc = st.segmented_control("Tela", ["📝 Registrar", "📊 Minha carteira"], default="📝 Registrar",
+        # celular abre no Registrar; computador abre na carteira
+        ua = str(st.context.headers.get("User-Agent", "")).lower()
+        celular = any(x in ua for x in ("iphone", "android", "mobile", "ipad"))
+        padrao = "📝 Registrar" if celular else "📊 Minha carteira"
+        esc = st.segmented_control("Tela", ["📝 Registrar", "📊 Minha carteira"], default=padrao,
                                    key="aba", label_visibility="collapsed")
-    aba = "registrar" if esc != "📊 Minha carteira" else "carteira"
+    aba = "registrar" if (esc or padrao) == "📝 Registrar" else "carteira"
 
 if aba == "registrar":
     hoje = cd.hoje()

@@ -45,6 +45,11 @@
   .prox button{border:0;background:none;color:var(--roxo2);font:inherit;font-weight:600;font-size:14px;cursor:pointer;min-height:44px;flex:none}
   .dica{font-size:12px;color:var(--sub);line-height:1.45}
   .erro{font-size:13px;color:#B42318}
+  .col{display:flex;flex-direction:column;gap:18px;min-width:0}
+  @media (min-width: 900px){
+    main{max-width:1040px}
+    .bloco.duas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px 32px;align-items:start}
+  }
   .faixa-teste{background:#FFF4D6;color:#8A5A00;font-size:12px;text-align:center;padding:6px 10px;font-weight:600}
 </style>
 </head>
@@ -86,11 +91,11 @@ function blocoCliente() {
 
 function telaForm() {
   const det = [S.sist, S.conc, S.motivo, S.risco, S.obs].filter(Boolean).length;
-  return `<div class="bloco">${blocoCliente()}
-    <div class="campo"><span class="lbl">Quem procurou?</span><div class="seg">${[['Ativo (eu procurei)', 'Eu procurei'], ['Receptivo (cliente procurou)', 'Cliente procurou']].map(([v, l]) => `<button class="${S.origem === v ? 'on' : ''}" data-c="origem" data-v="${v}">${l}</button>`).join('')}</div></div>
-    <div class="campo" id="campo-tipo"><span class="lbl">Como foi?</span>${chips('tipo', ['Whatsapp', 'Telefone', 'Visita', 'Loja', 'Reunião', 'E-mail', 'Evento / Curso'])}${S.tentou && !S.tipo ? '<span class="erro">Escolha como foi o contato.</span>' : ''}</div>
+  return `<div class="bloco duas"><div class="col">${blocoCliente()}
+    <div class="campo"><span class="lbl">Quem procurou?</span><div class="seg">${[['Ativo (eu procurei)', 'Eu procurei'], ['Receptivo (cliente procurou)', 'Cliente procurou']].map(([v, l]) => `<button class="${S.origem === v ? 'on' : ''}" data-c="origem" data-v="${v}">${l}</button>`).join('')}</div></div></div>
+    <div class="col"><div class="campo" id="campo-tipo"><span class="lbl">Como foi?</span>${chips('tipo', ['Whatsapp', 'Telefone', 'Visita', 'Loja', 'Reunião', 'E-mail', 'Evento / Curso'])}${S.tentou && !S.tipo ? '<span class="erro">Escolha como foi o contato.</span>' : ''}</div>
     <div class="campo" id="campo-res"><span class="lbl">Resultado</span>${chips('res', ['Pedido fechado', 'Orçamento enviado', 'Vai retornar', 'Sem resposta', 'Sem interesse no momento', 'Só relacionamento', 'Reclamação'])}${S.tentou && !S.res ? '<span class="erro">Escolha o resultado.</span>' : ''}</div>
-    <div class="campo"><label class="lbl" for="prox">Próximo contato <small>(opcional)</small></label><input type="date" id="prox" value="${S.prox}"></div>
+    <div class="campo"><label class="lbl" for="prox">Próximo contato <small>(opcional)</small></label><input type="date" id="prox" value="${S.prox}"></div></div>
   </div>
   <button class="mais" id="mais">+ Mais detalhes (sistema, concorrente, observações)${det ? ' · ' + det + ' preenchido(s)' : ''}</button>
   ${erro ? `<div class="aviso" role="alert" style="background:#FDECEA;color:#B42318;font-weight:600">${esc(erro)}</div>` : ''}
@@ -102,12 +107,12 @@ function telaDetalhes() {
   const sel = (id, l, ops) => `<div class="campo"><label class="lbl" for="${id}">${l} <small>(opcional)</small></label><select id="${id}"><option value="">Escolher…</option>${ops.map(o => `<option ${S[id] === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>`;
   return (semSist ? '<div class="aviso">Este cliente ainda não tem o <b>sistema de implantes</b> no cadastro. Aproveite para perguntar.</div>'
                   : `<div class="aviso" style="background:var(--claro);color:var(--roxo2)">No cadastro: <b>${esc(c.sist)}</b>. Só marque se o cliente disse algo diferente.</div>`) +
-  `<div class="bloco">
+  `<div class="bloco duas"><div class="col">
     <div class="campo"><span class="lbl">Sist. de implantes <small>(opcional)</small></span>${chips('sist', ['GM', 'CM', 'HE', 'GM e CM', 'GM e HE', 'CM e HE', 'Diversas marcas'])}</div>
     ${sel('conc', 'Concorrente citado', ['Não tem', 'Não identificado', 'S.I.N.', 'Straumann', 'Conexão', 'Titaniumfix', 'Nobel', 'Singular', 'Intraoss', 'Signo Vinces', 'Emfils', 'Implacil', 'DSP', 'Outro'])}
-    ${sel('motivo', 'Motivo da redução', ['Não existe', 'Concorrência', 'Outras marcas', 'Compra de fábrica', 'Compra conjunta', 'Busca por Preço e Promoções', 'Busca por marcas mais baratas', 'Inadimplência', 'Incerteza econômica', 'Experiência do Cliente Insatisfatória', 'Preço do Frete', 'Baixa demanda / sazonal', 'Mudou de Ramo/objetivo'])}
-    <div class="campo"><span class="lbl">Nível de risco <small>(opcional)</small></span>${chips('risco', ['Baixo', 'Médio', 'Alto', 'Preocupante'])}</div>
-    <div class="campo"><label class="lbl" for="obs">Observações <small>(opcional)</small></label><textarea id="obs" maxlength="1000" placeholder="Ex.: quer orçamento de kit cirúrgico para dezembro">${esc(S.obs)}</textarea></div>
+    ${sel('motivo', 'Motivo da redução', ['Não existe', 'Concorrência', 'Outras marcas', 'Compra de fábrica', 'Compra conjunta', 'Busca por Preço e Promoções', 'Busca por marcas mais baratas', 'Inadimplência', 'Incerteza econômica', 'Experiência do Cliente Insatisfatória', 'Preço do Frete', 'Baixa demanda / sazonal', 'Mudou de Ramo/objetivo'])}</div>
+    <div class="col"><div class="campo"><span class="lbl">Nível de risco <small>(opcional)</small></span>${chips('risco', ['Baixo', 'Médio', 'Alto', 'Preocupante'])}</div>
+    <div class="campo"><label class="lbl" for="obs">Observações <small>(opcional)</small></label><textarea id="obs" maxlength="1000" placeholder="Ex.: quer orçamento de kit cirúrgico para dezembro">${esc(S.obs)}</textarea></div></div>
   </div>
   <button class="btn" id="okdet">Pronto, voltar ao formulário</button>`;
 }
