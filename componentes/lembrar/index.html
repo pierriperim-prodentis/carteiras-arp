@@ -20,6 +20,23 @@ window.addEventListener('message', ev => {
   } catch (e) { guardado = ''; }
   if (a.modo === 'ler') enviar('streamlit:setComponentValue', {value: guardado, dataType: 'json'});
 });
+// Ícone do atalho na tela inicial do celular (dentinho) e nome "Carteiras".
+(function icone() {
+  const base = location.pathname.split('/component/')[0];
+  const url = location.origin + base + '/app/static/apple-touch-icon.png';
+  const docs = [];
+  try { docs.push(window.top.document); } catch (e) {}
+  try { if (window.parent !== window.top) docs.push(window.parent.document); } catch (e) {}
+  docs.forEach(d => {
+    try {
+      d.querySelectorAll('link[rel="apple-touch-icon"]').forEach(l => l.remove());
+      const l = d.createElement('link'); l.rel = 'apple-touch-icon'; l.href = url; d.head.appendChild(l);
+      if (!d.querySelector('meta[name="apple-mobile-web-app-title"]')) {
+        const m = d.createElement('meta'); m.name = 'apple-mobile-web-app-title'; m.content = 'Carteiras'; d.head.appendChild(m);
+      }
+    } catch (e) {}
+  });
+})();
 enviar('streamlit:componentReady', {apiVersion: 1});
 enviar('streamlit:setFrameHeight', {height: 0});
 </script>
