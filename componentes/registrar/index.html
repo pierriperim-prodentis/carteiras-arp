@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{--roxo:#6B3FA0;--roxo2:#4A2575;--fundo:#F5F3FA;--borda:#E6E1EE;--txt:#2B2238;--sub:#5F5A6B;--claro:#F6F2FC}
+  *{box-sizing:border-box}
+  body{margin:0;overflow:hidden;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--fundo);color:var(--txt);-webkit-text-size-adjust:100%}
+  main{max-width:560px;margin:0 auto;display:flex;flex-direction:column}
+  .topo{background:linear-gradient(90deg,#4A2575,#7B4BB5);color:#fff;padding:16px 16px 14px;display:flex;flex-direction:column;gap:10px}
+  .topo .t{font-size:18px;font-weight:700}.topo .s{font-size:12px;color:#EDE4F7}
+  .linha{display:flex;align-items:center;gap:12px}
+  .icone{width:44px;height:44px;border:0;background:rgba(255,255,255,.14);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
+  .meta{display:flex;justify-content:space-between;font-size:12px}
+  .barra{height:8px;background:rgba(255,255,255,.25);border-radius:4px;overflow:hidden}.barra i{display:block;height:100%;background:#fff;border-radius:4px;transition:width .4s}
+  .corpo{padding:14px;display:flex;flex-direction:column;gap:14px}
+  .bloco{background:#fff;border:1px solid var(--borda);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:18px}
+  .campo{display:flex;flex-direction:column;gap:8px}
+  .lbl{font-size:12px;font-weight:600;color:var(--sub);text-transform:uppercase;letter-spacing:.04em}.lbl small{font-weight:400;text-transform:none;letter-spacing:0;font-size:12px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{min-height:44px;padding:0 14px;border-radius:22px;font:inherit;font-size:15px;background:#fff;color:var(--txt);border:1px solid #D9D2E5;cursor:pointer}
+  .chip.on{background:var(--roxo);color:#fff;border-color:var(--roxo);font-weight:600}
+  .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid #D9D2E5;border-radius:10px;overflow:hidden}
+  .seg button{min-height:44px;border:0;background:#fff;font:inherit;font-size:15px;cursor:pointer;color:var(--txt)}.seg button.on{background:var(--roxo);color:#fff;font-weight:600}
+  input,select,textarea{width:100%;min-height:48px;border:1px solid #D9D2E5;border-radius:10px;background:#fff;padding:0 14px;font:inherit;font-size:16px;color:var(--txt)}
+  textarea{padding:12px 14px;min-height:84px;resize:vertical}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--roxo);border-color:var(--roxo)}
+  .sel{border:1px solid var(--roxo);border-radius:10px;background:var(--claro);padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+  .sel .n{font-size:15px;font-weight:700}.trocar{border:0;background:none;color:var(--roxo2);font:inherit;font-size:14px;font-weight:600;cursor:pointer;min-height:40px}
+  .tag{font-size:12px;font-weight:600;border-radius:6px;padding:2px 8px}.amar{background:#FFF4D6;color:#8A5A00}.lil{background:#EFE8F8;color:var(--roxo2)}.verde{background:#E3F4EA;color:#1E7B45}.verm{background:#FDECEA;color:#B42318}
+  .lista{border:1px solid var(--borda);border-radius:10px;overflow:hidden}
+  .lista button{display:flex;flex-direction:column;gap:2px;align-items:flex-start;width:100%;text-align:left;padding:12px 14px;border:0;border-bottom:1px solid #F0EDF5;background:#fff;font:inherit;cursor:pointer;color:var(--txt)}
+  .lista .nm{font-size:15px;font-weight:600}.lista .d{font-size:12px;color:var(--sub)}
+  .lista button.novo{background:var(--claro)}.lista button.novo .nm{color:var(--roxo2)}
+  .lista .cab{padding:8px 14px;font-size:12px;color:var(--sub);background:#FAF8FD}
+  .aviso{background:#FFF4D6;color:#8A5A00;border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.4}
+  .mais{min-height:48px;border:1px dashed #B9A8D6;border-radius:12px;background:transparent;color:var(--roxo2);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+  .btn{width:100%;min-height:54px;border:0;border-radius:12px;background:var(--roxo);color:#fff;font:inherit;font-size:16px;font-weight:700;cursor:pointer}
+  .btn:disabled{background:#B9A8D6;cursor:wait}
+  .btn2{width:100%;min-height:48px;border:1px solid #D9D2E5;border-radius:12px;background:#fff;color:var(--roxo2);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+  .ok{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:24px 16px}
+  .circ{width:64px;height:64px;border-radius:32px;background:#E3F4EA;display:flex;align-items:center;justify-content:center}
+  .prox{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:52px;border-bottom:1px solid #F0EDF5}.prox:last-child{border:0}
+  .prox button{border:0;background:none;color:var(--roxo2);font:inherit;font-weight:600;font-size:14px;cursor:pointer;min-height:44px;flex:none}
+  .dica{font-size:12px;color:var(--sub);line-height:1.45}
+  .erro{font-size:13px;color:#B42318}
+  .faixa-teste{background:#FFF4D6;color:#8A5A00;font-size:12px;text-align:center;padding:6px 10px;font-weight:600}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+// Formulário "Registrar atendimento" (app das assessoras).
+// Recebe do Python: nome, clientes [{n, st, ult, sist, agenda}], agenda [nomes], feitos, meta, teste,
+// resposta {nonce, ok, erro, registro}. Devolve ao Python: {nonce, registro} ao salvar.
+let A = {clientes: [], agenda: [], feitos: 0, meta: 20};
+const chave = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const vazio = () => ({cliente: null, novo: false, busca: '', origem: 'Ativo (eu procurei)', tipo: null, res: null, prox: '',
+                      sist: null, conc: '', motivo: '', risco: null, obs: '', tentou: false});
+let S = vazio(), fase = 'form', pendente = null, salvo = null, erro = '', vistos = {};
+const $ = s => document.querySelector(s);
+const cliObj = () => A.clientes.find(c => c.n === S.cliente);
+const corSt = st => ({'Em queda': 'amar', 'Parado': 'verm', 'Perdido': 'verm', 'Em alta': 'verde', 'Estável': 'verde', 'Novo': 'verde', 'Reativado': 'verde'}[st] || 'lil');
+const chips = (campo, ops) => `<div class="chips">${ops.map(o => `<button class="chip ${S[campo] === o ? 'on' : ''}" data-c="${campo}" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+
+function blocoCliente() {
+  if (S.cliente) {
+    const c = cliObj();
+    return `<div class="campo"><span class="lbl">Cliente</span><div class="sel">
+      <div class="linha" style="justify-content:space-between"><span class="n">${esc(S.cliente)}</span><button class="trocar" id="trocar">Trocar</button></div>
+      <div class="chips" style="gap:6px;align-items:center">${c ? `<span class="tag ${corSt(c.st)}">${esc(c.st || '—')}</span>${c.agenda ? '<span class="tag lil">Na agenda de hoje</span>' : ''}<span style="font-size:12px;color:var(--sub)">${c.ult ? 'última compra ' + esc(c.ult) : 'sem compra registrada'}${c.sist ? ' · ' + esc(c.sist) : ''}</span>` : '<span class="tag lil">Cliente novo · entra como Potencial</span>'}</div></div></div>`;
+  }
+  const q = chave(S.busca);
+  const achados = q ? A.clientes.filter(c => chave(c.n).includes(q)).slice(0, 8) : A.agenda.map(n => A.clientes.find(c => c.n === n)).filter(Boolean).slice(0, 8);
+  const exato = q && A.clientes.some(c => chave(c.n) === q);
+  return `<div class="campo"><label class="lbl" for="busca">Cliente</label>
+    <input id="busca" placeholder="🔎 Digite o nome do cliente" value="${esc(S.busca)}" autocomplete="off" autocapitalize="words">
+    ${achados.length || (q.length >= 3 && !exato) ? `<div class="lista">${!q ? '<div class="cab">Da sua agenda de hoje (ainda não atendidos)</div>' : ''}
+      ${achados.map(c => `<button data-cli="${esc(c.n)}"><span class="nm">${esc(c.n)}</span><span class="d">${esc(c.st || '—')}${c.ult ? ' · última compra ' + esc(c.ult) : ''}</span></button>`).join('')}
+      ${q.length >= 3 && !exato ? `<button class="novo" data-novo="1"><span class="nm">+ Cadastrar "${esc(S.busca.trim())}" como cliente novo</span><span class="d">Entra na carteira como Potencial</span></button>` : ''}
+    </div>` : ''}
+    ${S.tentou && !S.cliente ? '<span class="erro">Escolha o cliente.</span>' : ''}</div>`;
+}
+
+function telaForm() {
+  const det = [S.sist, S.conc, S.motivo, S.risco, S.obs].filter(Boolean).length;
+  return `<div class="bloco">${blocoCliente()}
+    <div class="campo"><span class="lbl">Quem procurou?</span><div class="seg">${[['Ativo (eu procurei)', 'Eu procurei'], ['Receptivo (cliente procurou)', 'Cliente procurou']].map(([v, l]) => `<button class="${S.origem === v ? 'on' : ''}" data-c="origem" data-v="${v}">${l}</button>`).join('')}</div></div>
+    <div class="campo"><span class="lbl">Como foi?</span>${chips('tipo', ['Whatsapp', 'Telefone', 'Visita', 'Loja', 'Reunião', 'E-mail', 'Evento / Curso'])}${S.tentou && !S.tipo ? '<span class="erro">Escolha como foi o contato.</span>' : ''}</div>
+    <div class="campo"><span class="lbl">Resultado</span>${chips('res', ['Pedido fechado', 'Orçamento enviado', 'Vai retornar', 'Sem resposta', 'Sem interesse no momento', 'Só relacionamento', 'Reclamação'])}${S.tentou && !S.res ? '<span class="erro">Escolha o resultado.</span>' : ''}</div>
+    <div class="campo"><label class="lbl" for="prox">Próximo contato <small>(opcional)</small></label><input type="date" id="prox" value="${S.prox}"></div>
+  </div>
+  <button class="mais" id="mais">+ Mais detalhes (sistema, concorrente, observações)${det ? ' · ' + det + ' preenchido(s)' : ''}</button>
+  ${erro ? `<div class="aviso" style="background:#FDECEA;color:#B42318">${esc(erro)}</div>` : ''}
+  <button class="btn" id="salvar" ${pendente ? 'disabled' : ''}>${pendente ? 'Salvando…' : 'Salvar atendimento'}</button>`;
+}
+
+function telaDetalhes() {
+  const c = cliObj(), semSist = !c || !c.sist;
+  const sel = (id, l, ops) => `<div class="campo"><label class="lbl" for="${id}">${l} <small>(opcional)</small></label><select id="${id}"><option value="">Escolher…</option>${ops.map(o => `<option ${S[id] === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select></div>`;
+  return (semSist ? '<div class="aviso">Este cliente ainda não tem o <b>sistema de implantes</b> no cadastro. Aproveite para perguntar.</div>'
+                  : `<div class="aviso" style="background:var(--claro);color:var(--roxo2)">No cadastro: <b>${esc(c.sist)}</b>. Só marque se o cliente disse algo diferente.</div>`) +
+  `<div class="bloco">
+    <div class="campo"><span class="lbl">Sist. de implantes <small>(opcional)</small></span>${chips('sist', ['GM', 'CM', 'HE', 'GM e CM', 'GM e HE', 'CM e HE', 'Diversas marcas'])}</div>
+    ${sel('conc', 'Concorrente citado', ['Não tem', 'Não identificado', 'S.I.N.', 'Straumann', 'Conexão', 'Titaniumfix', 'Nobel', 'Singular', 'Intraoss', 'Signo Vinces', 'Emfils', 'Implacil', 'DSP', 'Outro'])}
+    ${sel('motivo', 'Motivo da redução', ['Não existe', 'Concorrência', 'Outras marcas', 'Compra de fábrica', 'Compra conjunta', 'Busca por Preço e Promoções', 'Busca por marcas mais baratas', 'Inadimplência', 'Incerteza econômica', 'Experiência do Cliente Insatisfatória', 'Preço do Frete', 'Baixa demanda / sazonal', 'Mudou de Ramo/objetivo'])}
+    <div class="campo"><span class="lbl">Nível de risco <small>(opcional)</small></span>${chips('risco', ['Baixo', 'Médio', 'Alto', 'Preocupante'])}</div>
+    <div class="campo"><label class="lbl" for="obs">Observações <small>(opcional)</small></label><textarea id="obs" maxlength="1000" placeholder="Ex.: quer orçamento de kit cirúrgico para dezembro">${esc(S.obs)}</textarea></div>
+  </div>
+  <button class="btn" id="okdet">Pronto, voltar ao formulário</button>`;
+}
+
+function telaSalvo() {
+  const r = salvo, falta = Math.max(0, (A.meta || 20) - A.feitos);
+  const prox = A.agenda.filter(n => n !== r.cliente).slice(0, 3).map(n => A.clientes.find(c => c.n === n)).filter(Boolean);
+  return `<div class="bloco ok"><div class="circ"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1E7B45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></div>
+    <span style="font-size:20px;font-weight:700">Registrado!</span>
+    <span style="font-size:14px;color:var(--sub);line-height:1.5">${esc(r.cliente)} · ${esc(r.tipo)} · ${esc(r.resultado)}${r.cliente_novo ? '<br>Cliente novo: entra na carteira como Potencial.' : ''}${r.sist_implantes ? '<br>Sistema de implantes: <b style="color:var(--txt)">' + esc(r.sist_implantes) + '</b>' : ''}<br>${falta ? `Faltam <b style="color:var(--txt)">${falta}</b> para a meta de hoje.` : '<b style="color:#1E7B45">Meta de hoje batida! 🎉</b>'}</span></div>
+  ${prox.length ? `<div class="bloco" style="gap:4px"><span class="lbl">Próximos da agenda de hoje</span>
+    ${prox.map(c => `<div class="prox"><div><div style="font-size:15px;font-weight:600">${esc(c.n)}</div><div style="font-size:12px;color:var(--sub)">${esc(c.st || '—')}${c.ult ? ' · última compra ' + esc(c.ult) : ''}</div></div><button data-ir="${esc(c.n)}">Registrar</button></div>`).join('')}</div>` : ''}
+  <div class="dica" style="text-align:center">${A.teste ? 'Modo de teste: este registro NÃO vai para a planilha nem conta no placar oficial.' : 'Vai para a sua planilha (aba INTERACOES) na próxima rodada do robô.'}</div>
+  <button class="btn" id="outro">Registrar outro atendimento</button>`;
+}
+
+function render() {
+  const pct = Math.min(100, 100 * A.feitos / (A.meta || 20));
+  $('#app').innerHTML = (A.teste ? '<div class="faixa-teste">MODO DE TESTE · nada vai para a planilha</div>' : '') +
+    `<div class="topo"><div class="linha">${fase === 'detalhes' ? '<button class="icone" id="voltar" aria-label="Voltar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>' : ''}
+      <div><div class="t">${fase === 'detalhes' ? 'Mais detalhes' : fase === 'salvo' ? 'Atendimento salvo' : 'Registrar atendimento'}</div><div class="s">${esc(A.nome || '')}</div></div></div>
+      <div><div class="meta"><span>Atendimentos hoje</span><b>${A.feitos} / ${A.meta || 20}</b></div><div class="barra"><i style="width:${pct}%"></i></div></div></div>
+    <div class="corpo">${fase === 'detalhes' ? telaDetalhes() : fase === 'salvo' && salvo ? telaSalvo() : telaForm()}</div>`;
+  ligar(); setTimeout(altura, 0);
+}
+
+function ligar() {
+  document.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { const c = b.dataset.c; S[c] = S[c] === b.dataset.v && c !== 'origem' ? null : b.dataset.v; render(); });
+  document.querySelectorAll('[data-cli]').forEach(b => b.onclick = () => { S.cliente = b.dataset.cli; S.novo = false; render(); });
+  document.querySelectorAll('[data-novo]').forEach(b => b.onclick = () => { S.cliente = S.busca.trim().replace(/\s+/g, ' '); S.novo = true; render(); });
+  document.querySelectorAll('[data-ir]').forEach(b => b.onclick = () => { S = vazio(); S.cliente = b.dataset.ir; fase = 'form'; erro = ''; render(); topo(); });
+  const bu = $('#busca');
+  if (bu) bu.oninput = () => { S.busca = bu.value; const p = bu.selectionStart; render(); const n = $('#busca'); n.focus(); try { n.setSelectionRange(p, p); } catch (e) {} };
+  const on = (id, f) => { const e = $('#' + id); if (e) e.onclick = f; };
+  on('trocar', () => { S.cliente = null; S.novo = false; render(); });
+  on('mais', () => { fase = 'detalhes'; render(); topo(); });
+  on('okdet', () => { fase = 'form'; render(); topo(); });
+  on('voltar', () => { fase = 'form'; render(); topo(); });
+  on('outro', () => { S = vazio(); fase = 'form'; salvo = null; render(); topo(); });
+  on('salvar', salvar);
+  const px = $('#prox'); if (px) px.onchange = () => S.prox = px.value;
+  ['conc', 'motivo'].forEach(id => { const e = $('#' + id); if (e) e.onchange = () => S[id] = e.value; });
+  const ob = $('#obs'); if (ob) ob.oninput = () => S.obs = ob.value;
+}
+
+function salvar() {
+  S.tentou = true; erro = '';
+  if (!S.cliente || !S.tipo || !S.res) { render(); return; }
+  pendente = Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  const registro = {cliente: S.cliente, cliente_novo: S.novo, origem: S.origem, tipo: S.tipo, resultado: S.res,
+    proximo_contato: S.prox || null, sist_implantes: S.sist, concorrente: S.conc || null, motivo: S.motivo || null,
+    nivel_risco: S.risco, observacoes: S.obs.trim() || null};
+  render();
+  enviar('streamlit:setComponentValue', {value: {nonce: pendente, registro}, dataType: 'json'});
+  setTimeout(() => { if (pendente) { pendente = null; erro = 'Demorou demais para salvar. Confira a internet e tente de novo.'; render(); } }, 25000);
+}
+
+function topo() { try { window.parent.scrollTo(0, 0); } catch (e) {} window.scrollTo(0, 0); }
+function enviar(tipo, extra) { window.parent.postMessage(Object.assign({isStreamlitMessage: true, type: tipo}, extra || {}), '*'); }
+let alturaEnviada = 0;
+function altura() { const h = Math.ceil($('main').getBoundingClientRect().bottom) + 8; if (Math.abs(h - alturaEnviada) > 2) { alturaEnviada = h; enviar('streamlit:setFrameHeight', {height: h}); } }
+
+window.addEventListener('message', ev => {
+  const m = ev.data;
+  if (!m || m.type !== 'streamlit:render') return;
+  const a = (m.args || {}).dados || {};
+  A = Object.assign({clientes: [], agenda: [], feitos: 0, meta: 20}, a);
+  const r = a.resposta;
+  if (r && r.nonce && !vistos[r.nonce]) {
+    vistos[r.nonce] = 1;
+    if (r.nonce === pendente) {
+      pendente = null;
+      if (r.ok) { salvo = r.registro; fase = 'salvo'; S = vazio(); topo(); }
+      else erro = r.erro || 'Não consegui salvar. Tente de novo.';
+    }
+  }
+  render();
+});
+if (window.ResizeObserver) new ResizeObserver(altura).observe(document.body);
+render();
+enviar('streamlit:componentReady', {apiVersion: 1});
+</script>
+</body>
+</html>

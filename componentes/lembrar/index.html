@@ -1,0 +1,26 @@
+<!doctype html>
+<html><head><meta charset="utf-8"></head><body style="margin:0">
+<script>
+// "Lembrar neste aparelho": guarda a chave de acesso (NUNCA a senha) no próprio navegador.
+// modo "ler" devolve o que está guardado ("" se nada); "gravar" guarda o valor; "apagar" limpa.
+const CHAVE = 'carteiras_arp_acesso';
+function enviar(tipo, extra) { window.parent.postMessage(Object.assign({isStreamlitMessage: true, type: tipo}, extra || {}), '*'); }
+let ultimo = null;
+window.addEventListener('message', ev => {
+  const m = ev.data;
+  if (!m || m.type !== 'streamlit:render') return;
+  const a = m.args || {}, sinal = a.modo + '|' + (a.valor || '');
+  if (sinal === ultimo) return;
+  ultimo = sinal;
+  let guardado = '';
+  try {
+    if (a.modo === 'gravar' && a.valor) localStorage.setItem(CHAVE, a.valor);
+    else if (a.modo === 'apagar') localStorage.removeItem(CHAVE);
+    else if (a.modo === 'ler') guardado = localStorage.getItem(CHAVE) || '';
+  } catch (e) { guardado = ''; }
+  if (a.modo === 'ler') enviar('streamlit:setComponentValue', {value: guardado, dataType: 'json'});
+});
+enviar('streamlit:componentReady', {apiVersion: 1});
+enviar('streamlit:setFrameHeight', {height: 0});
+</script>
+</body></html>

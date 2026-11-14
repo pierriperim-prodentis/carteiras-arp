@@ -5,13 +5,24 @@ Cada assessora entra com e-mail e senha (login do Supabase) e vê SÓ os
 números dela: a trava fica no próprio banco (Row Level Security), não aqui.
 Este código pode ser público: não tem nenhuma chave secreta.
 
+Formulário "Registrar atendimento" (pensado para o celular): por enquanto só
+aparece no link de teste (…streamlit.app/?teste=1) e grava com teste = true,
+ou seja, não vai para a planilha nem para o placar oficial.
+
+"Lembrar neste aparelho": guarda no navegador só a chave de acesso do login
+(refresh token, que muda a cada uso), nunca a senha. "Sair" apaga a chave.
+
 Secrets (Streamlit Cloud > Settings > Secrets):
     SUPABASE_URL = "https://xxxx.supabase.co"
     SUPABASE_ANON_KEY = "sb_publishable_..."     # chave PÚBLICA (nunca a secreta)
 """
 
+import os
+import unicodedata
+
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 import carteiras_dados as cd
 
@@ -34,6 +45,16 @@ section[data-testid="stSidebar"] [data-testid="stSidebarUserContent"]{padding:24
 [data-testid="stSidebarContent"]{padding:0 !important;overflow-x:hidden !important}
 section[data-testid="stSidebar"] a{font-size:11.5px;overflow-wrap:anywhere}
 section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] button{font-size:13px !important}
+/* abas e "Minha conta" do celular */
+.st-key-abas, .st-key-conta_cel{padding:10px 14px !important}
+.st-key-conta_cel{display:none !important}
+iframe[title*="lembrar"]{display:block}
+@media (max-width: 700px){
+  section[data-testid="stSidebar"]{display:none !important}
+  .st-key-conta_cel{display:block !important}
+  .st-key-login{padding:20px 16px !important}
+}
+.st-key-login{padding:28px 32px;max-width:460px}
 </style>""", unsafe_allow_html=True)
 
 URL = str(st.secrets.get("SUPABASE_URL", "")).rstrip("/")
@@ -81,6 +102,30 @@ def trocar_senha(token, nova):
     return r.status_code == 200
 
 
+
+
+def gravar_registro(token, dados):
+    r = requests.post(f"{URL}/rest/v1/carteira_registros", headers={**_h(token), "Prefer": "return=representation"},
+                      json=dados, timeout=TIMEOUT)
+    if r.status_code == 401:
+        raise PermissionError
+    if r.status_code >= 300:
+        raise RuntimeError(r.text[:300])
+    return r.json()[0]
+
+
+PASTA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "componentes")
+_lembrar = components.declare_component("lembrar", path=os.path.join(PASTA, "lembrar"))
+_registrar = components.declare_component("registrar", path=os.path.join(PASTA, "registrar"))
+
+
+def chave(s):
+    s = unicodedata.normalize("NFD", str(s or "")).encode("ascii", "ignore").decode().lower()
+    return " ".join(s.split())
+
+
+TESTE = st.query_params.get("teste") == "1"
+
 if not URL or not CHAVE:
     st.error("App sem configuração (SUPABASE_URL / SUPABASE_ANON_KEY nos Secrets).")
     st.stop()
@@ -88,33 +133,63 @@ if not URL or not CHAVE:
 sessao = st.session_state.get("sessao")
 
 if not sessao:
-    st.markdown("## 🦷 Minha carteira")
-    st.caption("Entre com o seu e-mail da Pródentis e a senha que você recebeu.")
-    with st.form("login"):
-        email = st.text_input("E-mail")
-        senha = st.text_input("Senha", type="password")
-        ok = st.form_submit_button("Entrar", type="primary")
-    if ok:
-        s = entrar(email, senha)
+    # 1) aparelho lembrado? entra direto com a chave guardada no navegador
+    if st.session_state.get("saiu"):
+        _lembrar(modo="apagar", valor="", key="lembrar", default=None)
+        guardado = ""
+    else:
+        guardado = _lembrar(modo="ler", valor="", key="lembrar", default=None)
+        if guardado is None:          # o navegador ainda não respondeu
+            st.stop()
+    if guardado:
+        s = renovar(guardado)
         if s:
             st.session_state["sessao"] = s
+            st.session_state["lembrar_ok"] = True
             st.rerun()
-        st.error("E-mail ou senha incorretos.")
+        st.session_state["saiu"] = True      # chave vencida: apaga e pede login
+        st.rerun()
+    # 2) login normal
+    with st.container(key="login"):
+        st.markdown("## 🦷 Minha carteira")
+        st.caption("Entre com o seu e-mail da Pródentis e a senha que você recebeu.")
+        with st.form("login_form"):
+            email = st.text_input("E-mail")
+            senha = st.text_input("Senha", type="password")
+            lembrar = st.checkbox("Lembrar neste aparelho", value=True,
+                                  help="Não pede a senha de novo neste celular/computador até você tocar em Sair. Não use em aparelho de outra pessoa.")
+            ok = st.form_submit_button("Entrar", type="primary", use_container_width=True)
+        if ok:
+            s = entrar(email, senha)
+            if s:
+                st.session_state["sessao"] = s
+                st.session_state["lembrar_ok"] = lembrar
+                st.session_state.pop("saiu", None)
+                st.rerun()
+            st.error("E-mail ou senha incorretos.")
     st.stop()
 
 
+def token_atual():
+    return st.session_state["sessao"]["access_token"]
+
+
+def renovar_ou_sair():
+    novo = renovar(st.session_state["sessao"].get("refresh_token", ""))
+    if not novo:
+        st.session_state.pop("sessao", None)
+        st.session_state["saiu"] = True
+        st.rerun()
+    st.session_state["sessao"] = novo
+    return novo["access_token"]
+
+
 def carregar():
-    s = st.session_state["sessao"]
-    tok = s["access_token"]
+    tok = token_atual()
     try:
         eu = ler("carteira_usuarios", tok)
     except PermissionError:
-        novo = renovar(s.get("refresh_token", ""))
-        if not novo:
-            st.session_state.pop("sessao", None)
-            st.rerun()
-        st.session_state["sessao"] = novo
-        tok = novo["access_token"]
+        tok = renovar_ou_sair()
         eu = ler("carteira_usuarios", tok)
     if not eu:
         return None, tok
@@ -129,26 +204,105 @@ def carregar():
 
 
 tab, token = carregar()
-with st.sidebar:
-    st.caption(f"Conectada como  \n**{st.session_state['sessao'].get('user', {}).get('email', '')}**")
-    if st.button("🔄 Atualizar"):
+
+# mantém a chave guardada no aparelho sempre atualizada (ela muda a cada renovação)
+_lembrar(modo="gravar" if st.session_state.get("lembrar_ok") else "apagar",
+         valor=st.session_state["sessao"].get("refresh_token", "") if st.session_state.get("lembrar_ok") else "",
+         key="lembrar", default=None)
+
+
+def sair():
+    st.session_state.pop("sessao", None)
+    st.session_state["saiu"] = True
+    st.rerun()
+
+
+def painel_conta(sufixo):
+    if st.button("🔄 Atualizar", key="atu" + sufixo):
         st.rerun()
     with st.expander("🔑 Trocar minha senha"):
-        n1 = st.text_input("Nova senha (mínimo 8 caracteres)", type="password", key="n1")
-        n2 = st.text_input("Repita a nova senha", type="password", key="n2")
-        if st.button("Salvar nova senha"):
+        n1 = st.text_input("Nova senha (mínimo 8 caracteres)", type="password", key="n1" + sufixo)
+        n2 = st.text_input("Repita a nova senha", type="password", key="n2" + sufixo)
+        if st.button("Salvar nova senha", key="sv" + sufixo):
             if len(n1) < 8 or n1 != n2:
                 st.error("As senhas precisam ser iguais e ter 8 caracteres ou mais.")
-            elif trocar_senha(token, n1):
+            elif trocar_senha(token_atual(), n1):
                 st.success("Senha trocada.")
             else:
                 st.error("Não consegui trocar agora. Tente de novo.")
-    if st.button("Sair"):
-        st.session_state.pop("sessao", None)
-        st.rerun()
+    if st.button("Sair", key="sair" + sufixo):
+        sair()
+
+
+email_eu = st.session_state["sessao"].get("user", {}).get("email", "")
+with st.sidebar:
+    st.caption(f"Conectada como  \n**{email_eu}**")
+    painel_conta("_lat")
 
 if tab is None:
     st.warning("Seu login ainda não está ligado a uma carteira. Fale com o Pi.")
     st.stop()
 
-cd.mostrar(cd.montar(tab, "assessora"))
+dados = cd.montar(tab, "assessora")
+a = dados["assessores"][0] if dados["assessores"] else None
+
+aba = "carteira"
+if TESTE and a:
+    with st.container(key="abas"):
+        esc = st.segmented_control("Tela", ["📝 Registrar", "📊 Minha carteira"], default="📝 Registrar",
+                                   key="aba", label_visibility="collapsed")
+    aba = "registrar" if esc != "📊 Minha carteira" else "carteira"
+
+if aba == "registrar":
+    hoje = cd.hoje()
+    try:
+        regs = ler("carteira_registros", token_atual(), {"data": f"eq.{hoje}"})
+    except PermissionError:
+        renovar_ou_sair()
+        regs = ler("carteira_registros", token_atual(), {"data": f"eq.{hoje}"})
+    clientes = [{"n": c["cliente"], "st": c.get("status"),
+                 "ult": (c["ultima_compra"][5:7] + "/" + c["ultima_compra"][:4]) if c.get("ultima_compra") else None,
+                 "sist": c.get("sist_implantes")} for c in a.get("clientes", [])]
+    atendidos = {chave(r["cliente"]) for r in regs} | {chave(x["cliente"]) for x in a.get("agenda_hoje", []) if x.get("atendido")}
+    agenda = [x["cliente"] for x in sorted(a.get("agenda_hoje", []), key=lambda x: x.get("posicao", 99))
+              if chave(x["cliente"]) not in atendidos]
+    na_agenda = {chave(x["cliente"]) for x in a.get("agenda_hoje", [])}
+    for c in clientes:
+        c["agenda"] = chave(c["n"]) in na_agenda
+    ph = next((p for p in a.get("placar", []) if p.get("data") == hoje), {})
+    pendentes = [r for r in regs if not r.get("copiado_em") and (TESTE or not r.get("teste"))]
+    feitos = int(ph.get("atendimentos") or 0) + len(pendentes)
+
+    resp = st.session_state.get("resposta")
+    valor = _registrar(dados={"nome": f"Minha carteira — {a['nome']}", "clientes": clientes, "agenda": agenda,
+                              "feitos": feitos, "meta": int(ph.get("meta") or 20), "teste": TESTE, "resposta": resp},
+                       key="registrar", default=None)
+    feitos_nonces = st.session_state.setdefault("nonces", set())
+    if valor and valor.get("nonce") and valor["nonce"] not in feitos_nonces:
+        feitos_nonces.add(valor["nonce"])
+        r = dict(valor.get("registro") or {})
+        oficiais = {chave(c["n"]): c["n"] for c in clientes}
+        nome = " ".join(str(r.get("cliente", "")).split())
+        if chave(nome) in oficiais:                     # digitou diferente, mas é cliente da carteira
+            nome, r["cliente_novo"] = oficiais[chave(nome)], False
+        campos = ("cliente_novo", "origem", "tipo", "resultado", "proximo_contato", "sist_implantes",
+                  "concorrente", "motivo", "nivel_risco", "observacoes")
+        linha = {k: r.get(k) for k in campos}
+        linha.update(cliente=nome, teste=TESTE)
+        try:
+            try:
+                novo = gravar_registro(token_atual(), linha)
+            except PermissionError:
+                renovar_ou_sair()
+                novo = gravar_registro(token_atual(), linha)
+            st.session_state["resposta"] = {"nonce": valor["nonce"], "ok": True, "registro": novo}
+        except Exception:
+            st.session_state["resposta"] = {"nonce": valor["nonce"], "ok": False,
+                                            "erro": "Não consegui salvar agora. Confira a internet e tente de novo."}
+        st.rerun()
+else:
+    cd.mostrar(dados)
+
+with st.container(key="conta_cel"):
+    with st.expander(f"👤 Minha conta · {email_eu}"):
+        painel_conta("_cel")
