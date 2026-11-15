@@ -5,6 +5,9 @@ Cada assessora entra com e-mail e senha (login do Supabase) e vê SÓ os
 números dela: a trava fica no próprio banco (Row Level Security), não aqui.
 Este código pode ser público: não tem nenhuma chave secreta.
 
+Gestores (tabela carteira_gestores: Pi e André) entram com o próprio login e
+veem a visão geral das 7 carteiras, sem a aba Registrar.
+
 Formulário "Registrar atendimento" (pensado para o celular): grava em
 carteira_registros e o robô da Base copia para a aba INTERACOES da assessora.
 No link de teste (…streamlit.app/?teste=1) grava com teste = true: não vai
@@ -192,8 +195,12 @@ def carregar():
     except PermissionError:
         tok = renovar_ou_sair()
         eu = ler("carteira_usuarios", tok)
+    gestor = False
     if not eu:
-        return None, tok
+        gestor = bool(ler("carteira_gestores", tok))      # Pi e André: leem as 7 carteiras (permissão no banco)
+        if not gestor:
+            return None, tok
+    st.session_state["gestor"] = gestor
     tab = {
         "carteira_resumo": ler("carteira_resumo", tok),
         "carteira_placar_dia": ler("carteira_placar_dia", tok, {"data": f"gte.{cd.desde(45)}", "order": "data"}),
@@ -237,11 +244,19 @@ def painel_conta(sufixo):
 
 email_eu = st.session_state["sessao"].get("user", {}).get("email", "")
 with st.sidebar:
-    st.caption(f"Conectada como  \n**{email_eu}**")
+    st.caption(f"{'Conectado' if st.session_state.get('gestor') else 'Conectada'} como  \n**{email_eu}**")
     painel_conta("_lat")
 
 if tab is None:
     st.warning("Seu login ainda não está ligado a uma carteira. Fale com o Pi.")
+    st.stop()
+
+if st.session_state.get("gestor"):
+    # visão geral (a mesma página Carteiras do menuarp); gestor não registra atendimentos
+    cd.mostrar(cd.montar(tab, "gestor"))
+    with st.container(key="conta_cel"):
+        with st.expander(f"👤 Minha conta · {email_eu}"):
+            painel_conta("_cel")
     st.stop()
 
 dados = cd.montar(tab, "assessora")
