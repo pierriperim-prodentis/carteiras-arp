@@ -22,6 +22,7 @@ Secrets (Streamlit Cloud > Settings > Secrets):
 """
 
 import os
+from datetime import datetime, timezone
 import unicodedata
 
 import requests
@@ -116,6 +117,24 @@ def gravar_registro(token, dados):
     if r.status_code >= 300:
         raise RuntimeError(r.text[:300])
     return r.json()[0]
+
+
+def agora_utc():
+    return datetime.now(timezone.utc).isoformat()
+
+
+def corrigir_registro(token, rid, dados):
+    """Corrige/apaga um registro do próprio dia (o banco recusa outros). O robô ajusta a planilha."""
+    r = requests.patch(f"{URL}/rest/v1/carteira_registros", params={"id": f"eq.{int(rid)}"},
+                       headers={**_h(token), "Prefer": "return=representation"}, json=dados, timeout=TIMEOUT)
+    if r.status_code == 401:
+        raise PermissionError
+    if r.status_code >= 300:
+        raise RuntimeError(r.text[:300])
+    linhas = r.json()
+    if not linhas:
+        raise LookupError("só dá para corrigir registros de hoje")
+    return linhas[0]
 
 
 PASTA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "componentes")
@@ -290,16 +309,40 @@ if aba == "registrar":
     for c in clientes:
         c["agenda"] = chave(c["n"]) in na_agenda
     ph = next((p for p in a.get("placar", []) if p.get("data") == hoje), {})
-    pendentes = [r for r in regs if not r.get("copiado_em") and (TESTE or not r.get("teste"))]
+    pendentes = [r for r in regs if not r.get("copiado_em") and not r.get("apagado") and (TESTE or not r.get("teste"))]
+    meus = []
+    for r in sorted(regs, key=lambda x: x.get("criado_em") or "", reverse=True):
+        if r.get("apagado") or bool(r.get("teste")) != TESTE:
+            continue
+        try:
+            hora = datetime.fromisoformat(str(r["criado_em"]).replace("Z", "+00:00")).astimezone(cd.TZ).strftime("%Hh%M")
+        except Exception:
+            hora = ""
+        meus.append({**{k: v for k, v in r.items() if v is not None}, "hora": hora})
     feitos = int(ph.get("atendimentos") or 0) + len(pendentes)
 
     resp = st.session_state.get("resposta")
     valor = _registrar(dados={"nome": f"Minha carteira — {a['nome']}", "clientes": clientes, "agenda": agenda,
-                              "feitos": feitos, "meta": int(ph.get("meta") or 20), "teste": TESTE, "resposta": resp},
+                              "feitos": feitos, "meta": int(ph.get("meta") or 20), "teste": TESTE, "resposta": resp,
+                              "meus": meus},
                        key="registrar", default=None)
     feitos_nonces = st.session_state.setdefault("nonces", set())
     if valor and valor.get("nonce") and valor["nonce"] not in feitos_nonces:
         feitos_nonces.add(valor["nonce"])
+        acao = valor.get("acao")
+        if acao == "apagar":
+            try:
+                try:
+                    novo = corrigir_registro(token_atual(), valor["id"], {"apagado": True, "editado_em": agora_utc(), "sync_pendente": True})
+                except PermissionError:
+                    renovar_ou_sair()
+                    novo = corrigir_registro(token_atual(), valor["id"], {"apagado": True, "editado_em": agora_utc(), "sync_pendente": True})
+                st.session_state["resposta"] = {"nonce": valor["nonce"], "ok": True, "registro": novo, "acao": "apagar"}
+            except LookupError:
+                st.session_state["resposta"] = {"nonce": valor["nonce"], "ok": False, "erro": "Só dá para apagar registros de hoje."}
+            except Exception:
+                st.session_state["resposta"] = {"nonce": valor["nonce"], "ok": False, "erro": "Não consegui apagar agora. Tente de novo."}
+            st.rerun()
         r = dict(valor.get("registro") or {})
         oficiais = {chave(c["n"]): c["n"] for c in clientes}
         nome = " ".join(str(r.get("cliente", "")).split())
@@ -314,13 +357,23 @@ if aba == "registrar":
             lojas = next((c.get("lojas") or "" for c in a.get("clientes", []) if c.get("cliente") == nome), "")
             linha["op_regiao"] = {"PMW": "Palmas", "ITZ": "Imperatriz", "SLZ": "São Luís"}.get(lojas.strip()[:3].upper())
         linha.update(cliente=nome, teste=TESTE)
+        if acao == "editar":                       # correção: não muda o novo cadastro nem o modo de teste
+            for k in ("mig_loja", "mig_codigo", "teste"):
+                linha.pop(k, None)
+            linha.update(editado_em=agora_utc(), sync_pendente=True)
+            if not linha.get("op_classificacao"):
+                linha["op_regiao"] = None
         try:
             try:
-                novo = gravar_registro(token_atual(), linha)
+                novo = (corrigir_registro(token_atual(), valor["id"], linha) if acao == "editar"
+                        else gravar_registro(token_atual(), linha))
             except PermissionError:
                 renovar_ou_sair()
-                novo = gravar_registro(token_atual(), linha)
-            st.session_state["resposta"] = {"nonce": valor["nonce"], "ok": True, "registro": novo}
+                novo = (corrigir_registro(token_atual(), valor["id"], linha) if acao == "editar"
+                        else gravar_registro(token_atual(), linha))
+            st.session_state["resposta"] = {"nonce": valor["nonce"], "ok": True, "registro": novo, "acao": acao}
+        except LookupError:
+            st.session_state["resposta"] = {"nonce": valor["nonce"], "ok": False, "erro": "Só dá para corrigir registros de hoje."}
         except Exception:
             st.session_state["resposta"] = {"nonce": valor["nonce"], "ok": False,
                                             "erro": "Não consegui salvar agora. Confira a internet e tente de novo."}

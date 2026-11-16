@@ -65,7 +65,7 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp
 const vazio = () => ({cliente: null, novo: false, busca: '', origem: 'Ativo (eu procurei)', tipo: null, res: null, prox: '',
                       sist: null, conc: '', motivo: '', risco: null, obs: '', tentou: false,
                       op: false, opClass: null, opProd: null, opPot: null, opValor: '', opAcao: '', opData: '',
-                      migLoja: null, migCod: ''});
+                      migLoja: null, migCod: '', editId: null, confApagar: false});
 let S = vazio(), fase = 'form', pendente = null, salvo = null, erro = '', vistos = {};
 const $ = s => document.querySelector(s);
 const cliObj = () => A.clientes.find(c => c.n === S.cliente);
@@ -102,7 +102,28 @@ function telaForm() {
   ${blocoOportunidade()}
   <button class="mais" id="mais">+ Mais detalhes (sistema, concorrente, observações)${det ? ' · ' + det + ' preenchido(s)' : ''}</button>
   ${erro ? `<div class="aviso" role="alert" style="background:#FDECEA;color:#B42318;font-weight:600">${esc(erro)}</div>` : ''}
-  <button class="btn" id="salvar" ${pendente ? 'disabled' : ''}>${pendente ? 'Salvando…' : 'Salvar atendimento'}</button>`;
+  <button class="btn" id="salvar" ${pendente ? 'disabled' : ''}>${pendente ? 'Salvando…' : S.editId ? 'Salvar correção' : 'Salvar atendimento'}</button>
+  ${S.editId ? `<button class="btn2" id="cancelar-ed">Cancelar correção</button>
+    <button class="btn2" id="apagar" style="color:#B42318;border-color:#F3B8B2" ${pendente ? 'disabled' : ''}>${S.confApagar ? 'Toque de novo para APAGAR este registro' : 'Apagar este registro'}</button>` : listaMeus()}`;
+}
+function listaMeus() {
+  const L = A.meus || [];
+  if (!L.length) return '';
+  return `<div class="bloco" style="gap:4px"><span class="lbl">Meus registros de hoje pelo celular (${L.length})</span>
+    <span class="dica">Registrou algo errado? Toque em Corrigir. Dá para corrigir ou apagar só os registros de hoje.</span>
+    ${L.map(r => `<div class="prox"><div style="min-width:0"><div style="font-size:15px;font-weight:600">${esc(r.cliente)}</div>
+      <div style="font-size:12px;color:var(--sub)">${esc(r.hora || '')} · ${esc(r.tipo)} · ${esc(r.resultado)}${r.op_oportunidade ? ' · 💡' : ''}</div></div>
+      <button data-editar="${r.id}">Corrigir</button></div>`).join('')}</div>`;
+}
+function abrirEdicao(id) {
+  const r = (A.meus || []).find(x => String(x.id) === String(id)); if (!r) return;
+  S = Object.assign(vazio(), {editId: r.id, cliente: r.cliente, novo: !!r.cliente_novo, origem: r.origem || 'Ativo (eu procurei)',
+    tipo: r.tipo, res: r.resultado, prox: r.proximo_contato || '', sist: r.sist_implantes || null, conc: r.concorrente || '',
+    motivo: r.motivo || '', risco: r.nivel_risco || null, obs: r.observacoes || '', op: !!r.op_classificacao,
+    opClass: r.op_classificacao || null, opProd: r.op_oportunidade || null, opPot: r.op_potencial || null,
+    opValor: r.op_valor ? String(Math.round(Number(r.op_valor))) : '', opAcao: r.op_proxima_acao || '', opData: r.op_data_proxima || '',
+    migLoja: r.mig_loja || null, migCod: r.mig_codigo || ''});
+  fase = 'form'; erro = ''; render(); topo();
 }
 
 function telaDetalhes() {
@@ -118,8 +139,9 @@ function telaDetalhes() {
     <div class="campo"><label class="lbl" for="obs">Observações <small>(opcional)</small></label><textarea id="obs" maxlength="1000" placeholder="Ex.: quer orçamento de kit cirúrgico para dezembro">${esc(S.obs)}</textarea></div>
     <div class="campo" style="background:#F6F2FC;border-radius:10px;padding:12px"><span class="lbl">Cliente mudou de cadastro? <small>(ex.: CPF → CNPJ)</small></span>
       <span class="dica">Informe a loja e o código do <b>novo</b> cadastro no Max Data. As compras do novo cadastro passam a contar para este cliente.</span>
-      ${chips('migLoja', ['PMW', 'ITZ', 'SLZ'])}
-      <input id="migcod" inputmode="numeric" maxlength="10" placeholder="Novo código (ex.: 003224)" value="${esc(S.migCod)}"></div></div>
+      ${S.editId ? `<span style="font-size:14px">${S.migCod ? esc(S.migLoja) + ' ' + esc(S.migCod) : '—'} <span class="dica">(não muda na correção; se errou o código, apague o registro e registre de novo)</span></span>`
+        : `${chips('migLoja', ['PMW', 'ITZ', 'SLZ'])}
+      <input id="migcod" inputmode="numeric" maxlength="10" placeholder="Novo código (ex.: 003224)" value="${esc(S.migCod)}">`}</div></div>
   </div>
   <button class="btn" id="okdet">Pronto, voltar ao formulário</button>`;
 }
@@ -145,11 +167,11 @@ function telaSalvo() {
   const r = salvo, falta = Math.max(0, (A.meta || 20) - A.feitos);
   const prox = A.agenda.filter(n => n !== r.cliente).slice(0, 3).map(n => A.clientes.find(c => c.n === n)).filter(Boolean);
   return `<div class="bloco ok"><div class="circ"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1E7B45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></div>
-    <span style="font-size:20px;font-weight:700">Registrado!</span>
+    <span style="font-size:20px;font-weight:700">${r._acao === 'apagar' ? 'Registro apagado' : r._acao === 'editar' ? 'Correção salva!' : 'Registrado!'}</span>
     <span style="font-size:14px;color:var(--sub);line-height:1.5">${esc(r.cliente)} · ${esc(r.tipo)} · ${esc(r.resultado)}${r.cliente_novo ? '<br>Cliente novo: entra na carteira como Potencial.' : ''}${r.sist_implantes ? '<br>Sistema de implantes: <b style="color:var(--txt)">' + esc(r.sist_implantes) + '</b>' : ''}${r.mig_codigo ? '<br>🔗 Novo cadastro: <b style="color:var(--txt)">' + esc(r.mig_loja) + ' ' + esc(r.mig_codigo) + '</b> (o robô liga ao cliente)' : ''}${r.op_oportunidade ? '<br>💡 Oportunidade: <b style="color:var(--txt)">' + esc(r.op_oportunidade) + (r.op_valor ? ' · R$ ' + Number(r.op_valor).toLocaleString('pt-BR', {maximumFractionDigits: 0}) : '') + '</b>' : ''}<br>${falta ? `Faltam <b style="color:var(--txt)">${falta}</b> para a meta de hoje.` : '<b style="color:#1E7B45">Meta de hoje batida! 🎉</b>'}</span></div>
   ${prox.length ? `<div class="bloco" style="gap:4px"><span class="lbl">Próximos da agenda de hoje</span>
     ${prox.map(c => `<div class="prox"><div><div style="font-size:15px;font-weight:600">${esc(c.n)}</div><div style="font-size:12px;color:var(--sub)">${esc(c.st || '—')}${c.ult ? ' · última compra ' + esc(c.ult) : ''}</div></div><button data-ir="${esc(c.n)}">Registrar</button></div>`).join('')}</div>` : ''}
-  <div class="dica" style="text-align:center">${A.teste ? 'Modo de teste: este registro NÃO vai para a planilha nem conta no placar oficial.' : 'Vai para a sua planilha (aba INTERACOES) na próxima rodada do robô.'}</div>
+  <div class="dica" style="text-align:center">${A.teste ? 'Modo de teste: este registro NÃO vai para a planilha nem conta no placar oficial.' : r._acao ? 'A planilha (aba INTERACOES) é ajustada na próxima rodada do robô.' : 'Vai para a sua planilha (aba INTERACOES) na próxima rodada do robô.'}</div>
   <button class="btn" id="outro">Registrar outro atendimento</button>`;
 }
 
@@ -157,7 +179,7 @@ function render() {
   const pct = Math.min(100, 100 * A.feitos / (A.meta || 20));
   $('#app').innerHTML = (A.teste ? '<div class="faixa-teste">MODO DE TESTE · nada vai para a planilha</div>' : '') +
     `<div class="topo"><div class="linha">${fase === 'detalhes' ? '<button class="icone" id="voltar" aria-label="Voltar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>' : ''}
-      <div><div class="t">${fase === 'detalhes' ? 'Mais detalhes' : fase === 'salvo' ? 'Atendimento salvo' : 'Registrar atendimento'}</div><div class="s">${esc(A.nome || '')}</div></div></div>
+      <div><div class="t">${fase === 'detalhes' ? 'Mais detalhes' : fase === 'salvo' ? (salvo && salvo._acao === 'apagar' ? 'Registro apagado' : salvo && salvo._acao === 'editar' ? 'Correção salva' : 'Atendimento salvo') : S.editId ? 'Corrigir registro' : 'Registrar atendimento'}</div><div class="s">${esc(A.nome || '')}</div></div></div>
       <div><div class="meta"><span>Atendimentos hoje</span><b>${A.feitos} / ${A.meta || 20}</b></div><div class="barra"><i style="width:${pct}%"></i></div></div></div>
     <div class="corpo">${fase === 'detalhes' ? telaDetalhes() : fase === 'salvo' && salvo ? telaSalvo() : telaForm()}</div>`;
   ligar(); setTimeout(altura, 0);
@@ -176,6 +198,13 @@ function ligar() {
   on('okdet', () => { fase = 'form'; render(); topo(); });
   on('voltar', () => { fase = 'form'; render(); topo(); });
   on('outro', () => { S = vazio(); fase = 'form'; salvo = null; render(); topo(); });
+  document.querySelectorAll('[data-editar]').forEach(b => b.onclick = () => abrirEdicao(b.dataset.editar));
+  on('cancelar-ed', () => { S = vazio(); erro = ''; render(); topo(); });
+  on('apagar', () => {
+    if (!S.confApagar) { S.confApagar = true; render(); return; }
+    pendente = Date.now() + '-' + Math.random().toString(36).slice(2, 8); render();
+    enviar('streamlit:setComponentValue', {value: {nonce: pendente, acao: 'apagar', id: S.editId}, dataType: 'json'});
+  });
   on('salvar', salvar);
   const px = $('#prox'); if (px) px.onchange = () => S.prox = px.value;
   ['conc', 'motivo'].forEach(id => { const e = $('#' + id); if (e) e.onchange = () => S[id] = e.value; });
@@ -211,7 +240,8 @@ function salvar() {
   if (S.op) Object.assign(registro, {op_classificacao: S.opClass, op_oportunidade: S.opProd, op_potencial: S.opPot,
     op_valor: valorNum(S.opValor), op_proxima_acao: S.opAcao.trim() || null, op_data_proxima: S.opData || null});
   render();
-  enviar('streamlit:setComponentValue', {value: {nonce: pendente, registro}, dataType: 'json'});
+  if (S.editId) { delete registro.mig_loja; delete registro.mig_codigo; if (!S.op) Object.assign(registro, {op_classificacao: null, op_oportunidade: null, op_potencial: null, op_valor: null, op_proxima_acao: null, op_data_proxima: null}); }
+  enviar('streamlit:setComponentValue', {value: S.editId ? {nonce: pendente, acao: 'editar', id: S.editId, registro} : {nonce: pendente, registro}, dataType: 'json'});
   setTimeout(() => { if (pendente) { pendente = null; erro = 'Demorou demais para salvar. Confira a internet e tente de novo.'; render(); } }, 25000);
 }
 
@@ -230,7 +260,7 @@ window.addEventListener('message', ev => {
     vistos[r.nonce] = 1;
     if (r.nonce === pendente) {
       pendente = null;
-      if (r.ok) { salvo = r.registro; fase = 'salvo'; S = vazio(); topo(); }
+      if (r.ok) { salvo = Object.assign({}, r.registro, {_acao: r.acao || null}); fase = 'salvo'; S = vazio(); topo(); }
       else erro = r.erro || 'Não consegui salvar. Tente de novo.';
     }
   }
