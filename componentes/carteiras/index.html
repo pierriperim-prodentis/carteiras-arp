@@ -51,13 +51,17 @@
   .sist button.alvo .n{color:var(--verm)}
   .nsist{font:inherit;background:none;border:0;padding:0;cursor:pointer;color:var(--roxo2);font-weight:600;text-decoration:underline dotted}
   @media(max-width:640px){main{padding:14px}header{padding:16px}.grid2{grid-template-columns:1fr}td,th{padding:6px 4px}}
-  .cel-so{display:none}
+  .cel-so{display:none} .cel-so-th{display:none}
   @media(max-width:640px){
-    table thead{display:none}
-    table,tbody{display:block}
-    tr{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:10px 2px;border-bottom:1px solid #F0EDF5}
-    td{display:block;padding:0;border:0;font-size:13px;color:var(--sub)}
-    td.num{text-align:left;color:var(--txt);font-weight:600}
+    table:not(.manter) thead{display:none}
+    table:not(.manter),table:not(.manter) tbody{display:block}
+    table:not(.manter) tr{display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:10px 2px;border-bottom:1px solid #F0EDF5}
+    table:not(.manter) td{display:block;padding:0;border:0;font-size:13px;color:var(--sub)}
+    table:not(.manter) td.num{text-align:left;color:var(--txt);font-weight:600}
+    table.manter td,table.manter th{padding:6px 2px;font-size:11.5px;letter-spacing:0}
+    .card{padding:14px 12px}
+    table:not(.manter) td.cel-oculta{display:none}
+    .cel-so-th{display:inline !important}
     td.nome{order:-1;flex:0 0 100%;color:var(--txt)}
     td.nome a.cli,td.nome b{font-size:14px;font-weight:600}
     td.nome .cod{display:inline-block;margin-left:6px;white-space:nowrap}
@@ -245,12 +249,12 @@ function telaTodos() {
   </div>`;
   h += `<div class="card"><h2>Placar da equipe</h2><table><thead><tr><th>Assessor</th><th class="num">Hoje</th><th></th><th class="num">Semana</th><th class="num">Agenda hoje</th><th class="num">Efetivos sem.</th><th class="num">Pedidos sem.</th><th class="num">Vendas no ano</th><th class="num">Risco sem contato</th></tr></thead><tbody>` +
     L.map(({a, c}) => `<tr class="clic" data-id="${a.id}"><td class="nome"><b>${esc(a.nome)}</b></td>
-      <td class="num"><span class="tag ${classe(c.ph.atendimentos, c.ph.meta)}">${c.ph.atendimentos}/${c.ph.meta}</span></td>
-      <td><div class="bar"><i style="width:${c.ph.meta ? Math.min(100, 100 * c.ph.atendimentos / c.ph.meta) : 0}%"></i></div></td>
-      <td class="num">${c.semAt}/${c.semMeta}</td><td class="num">${c.ph.agenda_total ? c.ph.agenda_atendidos + '/' + c.ph.agenda_total : '—'}</td>
-      <td class="num">${c.semEf}</td><td class="num">${c.semPed}</td>
-      <td class="num"><span class="tag ${a.resumo && a.resumo.var_pct >= 0 ? 'ok' : 'ruim'}">${pct(a.resumo && a.resumo.var_pct)}</span></td>
-      <td class="num">${brl(c.riscoSemV)}<div class="cod">${c.riscoSem.length} clientes</div></td></tr>`).join('') +
+      <td class="num" data-l="Hoje "><span class="tag ${classe(c.ph.atendimentos, c.ph.meta)}">${c.ph.atendimentos}/${c.ph.meta}</span></td>
+      <td class="cel-oculta"><div class="bar"><i style="width:${c.ph.meta ? Math.min(100, 100 * c.ph.atendimentos / c.ph.meta) : 0}%"></i></div></td>
+      <td class="num" data-l="Semana ">${c.semAt}/${c.semMeta}</td><td class="num" data-l="Agenda hoje ">${c.ph.agenda_total ? c.ph.agenda_atendidos + '/' + c.ph.agenda_total : '—'}</td>
+      <td class="num" data-l="Efetivos ">${c.semEf}</td><td class="num" data-l="Pedidos ">${c.semPed}</td>
+      <td class="num" data-l="Vendas no ano "><span class="tag ${a.resumo && a.resumo.var_pct >= 0 ? 'ok' : 'ruim'}">${pct(a.resumo && a.resumo.var_pct)}</span></td>
+      <td class="num" data-l="Risco sem contato ">${brl(c.riscoSemV)}<div class="cod">${c.riscoSem.length} clientes</div></td></tr>`).join('') +
     '</tbody></table><div class="leg">Clique num assessor para abrir o bloco dele.</div></div>';
   h += tabelaSistEquipe();
   return h;
@@ -259,11 +263,11 @@ function telaTodos() {
 
 // ---- Sistema de implantes (migração CM → GM) ----
 const GRUPOS_SIST = [
-  {k: 'socm', t: 'Só CM', d: 'prioridade da migração para GM', alvo: true},
-  {k: 'cmgm', t: 'CM + GM', d: 'já migrando: ampliar o GM'},
-  {k: 'sogm', t: 'Só GM', d: 'já migrou: manter'},
-  {k: 'outros', t: 'Outros sistemas', d: 'HE e demais: converter'},
-  {k: 'ni', t: 'Não informado', d: 'verificar no próximo atendimento'}];
+  {k: 'socm', t: 'Só CM', c: 'CM', d: 'prioridade da migração para GM', alvo: true},
+  {k: 'cmgm', t: 'CM + GM', c: 'CM+GM', d: 'já migrando: ampliar o GM'},
+  {k: 'sogm', t: 'Só GM', c: 'GM', d: 'já migrou: manter'},
+  {k: 'outros', t: 'Outros sistemas', c: 'Outros', d: 'HE e demais: converter'},
+  {k: 'ni', t: 'Não informado', c: 'N/I', d: 'verificar no próximo atendimento'}];
 function grupoSist(v) {
   const s = String(v || '').toUpperCase();
   if (!s.trim()) return 'ni';
@@ -303,11 +307,11 @@ function tabelaSistEquipe() {
   const L = DADOS.assessores.map(a => ({a, S: contarSist(a), tot: (a.clientes || []).length}));
   const soma = k => L.reduce((t, x) => t + x.S[k].length, 0), totG = L.reduce((t, x) => t + x.tot, 0);
   const cel = (a, k, n) => `<td class="num">${n ? `<button class="nsist" data-aid="${a.id}" data-g="${k}">${n}</button>` : '0'}</td>`;
-  return `<div class="card"><h2>Sistema de implantes por assessor</h2><table><thead><tr><th>Assessor</th>` + GRUPOS_SIST.map(g => `<th class="num">${g.t}</th>`).join('') + `<th class="num">% informado</th></tr></thead><tbody>` +
+  return `<div class="card"><h2>Sistema de implantes por assessor</h2><div style="overflow-x:auto"><table class="manter"><thead><tr><th>Assessor</th>` + GRUPOS_SIST.map(g => `<th class="num"><span class="cel-oculta">${g.t}</span><span class="cel-so-th">${g.c}</span></th>`).join('') + `<th class="num"><span class="cel-oculta">% informado</span><span class="cel-so-th">%</span></th></tr></thead><tbody>` +
     L.map(({a, S, tot}) => `<tr><td><b>${esc(a.nome)}</b></td>` + GRUPOS_SIST.map(g => cel(a, g.k, S[g.k].length)).join('') +
       `<td class="num">${tot ? Math.round(100 * (tot - S.ni.length) / tot) : 0}%</td></tr>`).join('') +
     `<tr><td><b>Equipe</b></td>` + GRUPOS_SIST.map(g => `<td class="num"><b>${soma(g.k)}</b></td>`).join('') + `<td class="num"><b>${totG ? Math.round(100 * (totG - soma('ni')) / totG) : 0}%</b></td></tr>` +
-    '</tbody></table><div class="leg">Clique num número para abrir a lista de clientes daquele assessor.</div></div>';
+    '</tbody></table></div><div class="leg">Clique num número para abrir a lista de clientes daquele assessor.<span class="cel-so-th"> CM = só CM · CM+GM · GM = só GM · Outros · N/I = não informado · % = informado.</span></div></div>';
 }
 
 let atual = DADOS.modo === 'gestor' ? 'todos' : (DADOS.assessores[0] || {}).id;
