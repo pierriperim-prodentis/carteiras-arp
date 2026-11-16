@@ -96,7 +96,7 @@ function telaForm() {
   return `<div class="bloco duas"><div class="col">${blocoCliente()}
     <div class="campo"><span class="lbl">Quem procurou?</span><div class="seg">${[['Ativo (eu procurei)', 'Eu procurei'], ['Receptivo (cliente procurou)', 'Cliente procurou']].map(([v, l]) => `<button class="${S.origem === v ? 'on' : ''}" data-c="origem" data-v="${v}">${l}</button>`).join('')}</div></div></div>
     <div class="col"><div class="campo" id="campo-tipo"><span class="lbl">Como foi?</span>${chips('tipo', ['Whatsapp', 'Telefone', 'Visita', 'Loja', 'Reunião', 'E-mail', 'Evento / Curso'])}${S.tentou && !S.tipo ? '<span class="erro">Escolha como foi o contato.</span>' : ''}</div>
-    <div class="campo" id="campo-res"><span class="lbl">Resultado</span>${chips('res', ['Pedido fechado', 'Orçamento enviado', 'Vai retornar', 'Sem resposta', 'Sem interesse no momento', 'Só relacionamento', 'Reclamação'])}${S.tentou && !S.res ? '<span class="erro">Escolha o resultado.</span>' : ''}</div>
+    <div class="campo" id="campo-res"><span class="lbl">Resultado</span>${chips('res', ['Pedido fechado', 'Orçamento enviado', 'Vai retornar', 'Sem resposta', 'Sem interesse no momento', 'Só relacionamento', 'Reclamação', 'Troca'])}${S.tentou && !S.res ? '<span class="erro">Escolha o resultado.</span>' : ''}</div>
     <div class="campo"><label class="lbl" for="prox">Próximo contato <small>(opcional)</small></label><input type="date" id="prox" value="${S.prox}"></div></div>
   </div>
   ${blocoOportunidade()}
