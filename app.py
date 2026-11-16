@@ -307,7 +307,8 @@ if aba == "registrar":
             nome, r["cliente_novo"] = oficiais[chave(nome)], False
         campos = ("cliente_novo", "origem", "tipo", "resultado", "proximo_contato", "sist_implantes",
                   "concorrente", "motivo", "nivel_risco", "observacoes",
-                  "op_classificacao", "op_oportunidade", "op_potencial", "op_valor", "op_proxima_acao", "op_data_proxima")
+                  "op_classificacao", "op_oportunidade", "op_potencial", "op_valor", "op_proxima_acao", "op_data_proxima",
+                  "mig_loja", "mig_codigo")
         linha = {k: r.get(k) for k in campos}
         if linha.get("op_classificacao"):          # região da oportunidade = loja principal do cliente
             lojas = next((c.get("lojas") or "" for c in a.get("clientes", []) if c.get("cliente") == nome), "")

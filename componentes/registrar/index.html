@@ -64,7 +64,8 @@ const chave = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLo
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const vazio = () => ({cliente: null, novo: false, busca: '', origem: 'Ativo (eu procurei)', tipo: null, res: null, prox: '',
                       sist: null, conc: '', motivo: '', risco: null, obs: '', tentou: false,
-                      op: false, opClass: null, opProd: null, opPot: null, opValor: '', opAcao: '', opData: ''});
+                      op: false, opClass: null, opProd: null, opPot: null, opValor: '', opAcao: '', opData: '',
+                      migLoja: null, migCod: ''});
 let S = vazio(), fase = 'form', pendente = null, salvo = null, erro = '', vistos = {};
 const $ = s => document.querySelector(s);
 const cliObj = () => A.clientes.find(c => c.n === S.cliente);
@@ -91,7 +92,7 @@ function blocoCliente() {
 }
 
 function telaForm() {
-  const det = [S.sist, S.conc, S.motivo, S.risco, S.obs].filter(Boolean).length;
+  const det = [S.sist, S.conc, S.motivo, S.risco, S.obs, S.migCod].filter(Boolean).length;
   return `<div class="bloco duas"><div class="col">${blocoCliente()}
     <div class="campo"><span class="lbl">Quem procurou?</span><div class="seg">${[['Ativo (eu procurei)', 'Eu procurei'], ['Receptivo (cliente procurou)', 'Cliente procurou']].map(([v, l]) => `<button class="${S.origem === v ? 'on' : ''}" data-c="origem" data-v="${v}">${l}</button>`).join('')}</div></div></div>
     <div class="col"><div class="campo" id="campo-tipo"><span class="lbl">Como foi?</span>${chips('tipo', ['Whatsapp', 'Telefone', 'Visita', 'Loja', 'Reunião', 'E-mail', 'Evento / Curso'])}${S.tentou && !S.tipo ? '<span class="erro">Escolha como foi o contato.</span>' : ''}</div>
@@ -114,7 +115,11 @@ function telaDetalhes() {
     ${sel('conc', 'Concorrente citado', ['Não tem', 'Não identificado', 'S.I.N.', 'Straumann', 'Conexão', 'Titaniumfix', 'Nobel', 'Singular', 'Intraoss', 'Signo Vinces', 'Emfils', 'Implacil', 'DSP', 'Outro'])}
     ${sel('motivo', 'Motivo da redução', ['Não existe', 'Concorrência', 'Outras marcas', 'Compra de fábrica', 'Compra conjunta', 'Busca por Preço e Promoções', 'Busca por marcas mais baratas', 'Inadimplência', 'Incerteza econômica', 'Experiência do Cliente Insatisfatória', 'Preço do Frete', 'Baixa demanda / sazonal', 'Mudou de Ramo/objetivo'])}</div>
     <div class="col"><div class="campo"><span class="lbl">Nível de risco <small>(opcional)</small></span>${chips('risco', ['Baixo', 'Médio', 'Alto', 'Preocupante'])}</div>
-    <div class="campo"><label class="lbl" for="obs">Observações <small>(opcional)</small></label><textarea id="obs" maxlength="1000" placeholder="Ex.: quer orçamento de kit cirúrgico para dezembro">${esc(S.obs)}</textarea></div></div>
+    <div class="campo"><label class="lbl" for="obs">Observações <small>(opcional)</small></label><textarea id="obs" maxlength="1000" placeholder="Ex.: quer orçamento de kit cirúrgico para dezembro">${esc(S.obs)}</textarea></div>
+    <div class="campo" style="background:#F6F2FC;border-radius:10px;padding:12px"><span class="lbl">Cliente mudou de cadastro? <small>(ex.: CPF → CNPJ)</small></span>
+      <span class="dica">Informe a loja e o código do <b>novo</b> cadastro no Max Data. As compras do novo cadastro passam a contar para este cliente.</span>
+      ${chips('migLoja', ['PMW', 'ITZ', 'SLZ'])}
+      <input id="migcod" inputmode="numeric" maxlength="10" placeholder="Novo código (ex.: 003224)" value="${esc(S.migCod)}"></div></div>
   </div>
   <button class="btn" id="okdet">Pronto, voltar ao formulário</button>`;
 }
@@ -141,7 +146,7 @@ function telaSalvo() {
   const prox = A.agenda.filter(n => n !== r.cliente).slice(0, 3).map(n => A.clientes.find(c => c.n === n)).filter(Boolean);
   return `<div class="bloco ok"><div class="circ"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1E7B45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></div>
     <span style="font-size:20px;font-weight:700">Registrado!</span>
-    <span style="font-size:14px;color:var(--sub);line-height:1.5">${esc(r.cliente)} · ${esc(r.tipo)} · ${esc(r.resultado)}${r.cliente_novo ? '<br>Cliente novo: entra na carteira como Potencial.' : ''}${r.sist_implantes ? '<br>Sistema de implantes: <b style="color:var(--txt)">' + esc(r.sist_implantes) + '</b>' : ''}${r.op_oportunidade ? '<br>💡 Oportunidade: <b style="color:var(--txt)">' + esc(r.op_oportunidade) + (r.op_valor ? ' · R$ ' + Number(r.op_valor).toLocaleString('pt-BR', {maximumFractionDigits: 0}) : '') + '</b>' : ''}<br>${falta ? `Faltam <b style="color:var(--txt)">${falta}</b> para a meta de hoje.` : '<b style="color:#1E7B45">Meta de hoje batida! 🎉</b>'}</span></div>
+    <span style="font-size:14px;color:var(--sub);line-height:1.5">${esc(r.cliente)} · ${esc(r.tipo)} · ${esc(r.resultado)}${r.cliente_novo ? '<br>Cliente novo: entra na carteira como Potencial.' : ''}${r.sist_implantes ? '<br>Sistema de implantes: <b style="color:var(--txt)">' + esc(r.sist_implantes) + '</b>' : ''}${r.mig_codigo ? '<br>🔗 Novo cadastro: <b style="color:var(--txt)">' + esc(r.mig_loja) + ' ' + esc(r.mig_codigo) + '</b> (o robô liga ao cliente)' : ''}${r.op_oportunidade ? '<br>💡 Oportunidade: <b style="color:var(--txt)">' + esc(r.op_oportunidade) + (r.op_valor ? ' · R$ ' + Number(r.op_valor).toLocaleString('pt-BR', {maximumFractionDigits: 0}) : '') + '</b>' : ''}<br>${falta ? `Faltam <b style="color:var(--txt)">${falta}</b> para a meta de hoje.` : '<b style="color:#1E7B45">Meta de hoje batida! 🎉</b>'}</span></div>
   ${prox.length ? `<div class="bloco" style="gap:4px"><span class="lbl">Próximos da agenda de hoje</span>
     ${prox.map(c => `<div class="prox"><div><div style="font-size:15px;font-weight:600">${esc(c.n)}</div><div style="font-size:12px;color:var(--sub)">${esc(c.st || '—')}${c.ult ? ' · última compra ' + esc(c.ult) : ''}</div></div><button data-ir="${esc(c.n)}">Registrar</button></div>`).join('')}</div>` : ''}
   <div class="dica" style="text-align:center">${A.teste ? 'Modo de teste: este registro NÃO vai para a planilha nem conta no placar oficial.' : 'Vai para a sua planilha (aba INTERACOES) na próxima rodada do robô.'}</div>
@@ -179,6 +184,7 @@ function ligar() {
   on('op-fechar', () => { Object.assign(S, {op: false, opClass: null, opProd: null, opPot: null, opValor: '', opAcao: '', opData: ''}); render(); });
   [['opvalor', 'opValor'], ['opacao', 'opAcao']].forEach(([id, k]) => { const e = $('#' + id); if (e) e.oninput = () => S[k] = e.value; });
   const od = $('#opdata'); if (od) od.onchange = () => S.opData = od.value;
+  const mc = $('#migcod'); if (mc) mc.oninput = () => { S.migCod = mc.value.replace(/\D/g, ''); if (mc.value !== S.migCod) mc.value = S.migCod; };
 }
 
 function salvar() {
@@ -188,11 +194,12 @@ function salvar() {
     if (ex.length === 1) { S.cliente = ex[0].n; S.novo = false; }
   }
   const faltas = [[!S.cliente, 'cliente', 'campo-cliente'], [!S.tipo, 'como foi', 'campo-tipo'], [!S.res, 'resultado', 'campo-res'],
-                  [S.op && !S.opClass, 'classificação da oportunidade', 'campo-op'], [S.op && !S.opProd, 'qual a oportunidade', 'campo-op']].filter(x => x[0]);
+                  [S.op && !S.opClass, 'classificação da oportunidade', 'campo-op'], [S.op && !S.opProd, 'qual a oportunidade', 'campo-op'],
+                  [!!S.migCod && !S.migLoja, 'a loja do novo cadastro (em Mais detalhes)', null], [!!S.migLoja && !S.migCod, 'o código do novo cadastro (em Mais detalhes)', null]].filter(x => x[0]);
   if (faltas.length) {
     erro = 'Falta escolher: ' + faltas.map(x => x[1]).join(', ') + '.';
     render();
-    const alvo = document.getElementById(faltas[0][2]);
+    const alvo = faltas[0][2] && document.getElementById(faltas[0][2]);
     if (alvo) setTimeout(() => { try { alvo.scrollIntoView({block: 'center', behavior: 'smooth'}); } catch (e) { alvo.scrollIntoView(); } }, 50);
     return;
   }
@@ -200,6 +207,7 @@ function salvar() {
   const registro = {cliente: S.cliente, cliente_novo: S.novo, origem: S.origem, tipo: S.tipo, resultado: S.res,
     proximo_contato: S.prox || null, sist_implantes: S.sist, concorrente: S.conc || null, motivo: S.motivo || null,
     nivel_risco: S.risco, observacoes: S.obs.trim() || null};
+  if (S.migCod && S.migLoja) Object.assign(registro, {mig_loja: S.migLoja, mig_codigo: S.migCod.replace(/^0+(?=\d)/, '').padStart(6, '0')});
   if (S.op) Object.assign(registro, {op_classificacao: S.opClass, op_oportunidade: S.opProd, op_potencial: S.opPot,
     op_valor: valorNum(S.opValor), op_proxima_acao: S.opAcao.trim() || null, op_data_proxima: S.opData || null});
   render();
