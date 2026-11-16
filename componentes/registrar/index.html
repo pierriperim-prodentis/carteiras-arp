@@ -63,7 +63,8 @@ let A = {clientes: [], agenda: [], feitos: 0, meta: 20};
 const chave = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 const vazio = () => ({cliente: null, novo: false, busca: '', origem: 'Ativo (eu procurei)', tipo: null, res: null, prox: '',
-                      sist: null, conc: '', motivo: '', risco: null, obs: '', tentou: false});
+                      sist: null, conc: '', motivo: '', risco: null, obs: '', tentou: false,
+                      op: false, opClass: null, opProd: null, opPot: null, opValor: '', opAcao: '', opData: ''});
 let S = vazio(), fase = 'form', pendente = null, salvo = null, erro = '', vistos = {};
 const $ = s => document.querySelector(s);
 const cliObj = () => A.clientes.find(c => c.n === S.cliente);
@@ -97,6 +98,7 @@ function telaForm() {
     <div class="campo" id="campo-res"><span class="lbl">Resultado</span>${chips('res', ['Pedido fechado', 'Orçamento enviado', 'Vai retornar', 'Sem resposta', 'Sem interesse no momento', 'Só relacionamento', 'Reclamação'])}${S.tentou && !S.res ? '<span class="erro">Escolha o resultado.</span>' : ''}</div>
     <div class="campo"><label class="lbl" for="prox">Próximo contato <small>(opcional)</small></label><input type="date" id="prox" value="${S.prox}"></div></div>
   </div>
+  ${blocoOportunidade()}
   <button class="mais" id="mais">+ Mais detalhes (sistema, concorrente, observações)${det ? ' · ' + det + ' preenchido(s)' : ''}</button>
   ${erro ? `<div class="aviso" role="alert" style="background:#FDECEA;color:#B42318;font-weight:600">${esc(erro)}</div>` : ''}
   <button class="btn" id="salvar" ${pendente ? 'disabled' : ''}>${pendente ? 'Salvando…' : 'Salvar atendimento'}</button>`;
@@ -117,12 +119,29 @@ function telaDetalhes() {
   <button class="btn" id="okdet">Pronto, voltar ao formulário</button>`;
 }
 
+const valorNum = v => { const n = Number(String(v || '').replace(/[R$\s.]/g, '').replace(',', '.')); return isFinite(n) && n > 0 ? n : null; };
+function blocoOportunidade() {
+  if (!S.op) return '<button class="mais" id="op-abrir" style="border-color:#E3C26B;color:#8A5A00;background:#FFFBEF">💡 Surgiu uma oportunidade?</button>';
+  return `<div class="bloco duas" id="campo-op" style="border-color:#E3C26B;background:#FFFDF6">
+    <div class="col">
+      <div class="linha" style="justify-content:space-between"><span style="font-weight:700;font-size:15px">💡 Oportunidade</span><button class="trocar" id="op-fechar">Remover</button></div>
+      <div class="campo"><span class="lbl">Classificação</span>${chips('opClass', ['Crescimento', 'Recuperação', 'Defesa', 'Desenvolvimento'])}${S.tentou && !S.opClass ? '<span class="erro">Escolha a classificação.</span>' : ''}</div>
+      <div class="campo"><span class="lbl">Oportunidade principal</span>${chips('opProd', ['Implantes', 'Biomateriais', 'Fluxo Digital', 'Scanner', 'Cirurgia Guiada', 'Prótese', 'Instrumentais', 'Clareadores', 'Curso / Treinamento', 'Outro'])}${S.tentou && !S.opProd ? '<span class="erro">Escolha a oportunidade.</span>' : ''}</div>
+    </div>
+    <div class="col">
+      <div class="campo"><label class="lbl" for="opvalor">Valor estimado (R$) <small>(opcional)</small></label><input id="opvalor" inputmode="decimal" placeholder="Ex.: 18000" value="${esc(S.opValor)}"></div>
+      <div class="campo"><span class="lbl">Potencial mensal <small>(opcional)</small></span>${chips('opPot', ['Até R$ 1.000', 'R$ 1.000 a R$ 3.000', 'R$ 3.000 a R$ 10.000', 'Acima de R$ 10.000'])}</div>
+      <div class="campo"><label class="lbl" for="opacao">Próxima ação <small>(opcional)</small></label><input id="opacao" maxlength="300" placeholder="Ex.: enviar proposta do kit" value="${esc(S.opAcao)}"></div>
+      <div class="campo"><label class="lbl" for="opdata">Data da próxima ação <small>(opcional)</small></label><input type="date" id="opdata" value="${S.opData}"></div>
+    </div></div>`;
+}
+
 function telaSalvo() {
   const r = salvo, falta = Math.max(0, (A.meta || 20) - A.feitos);
   const prox = A.agenda.filter(n => n !== r.cliente).slice(0, 3).map(n => A.clientes.find(c => c.n === n)).filter(Boolean);
   return `<div class="bloco ok"><div class="circ"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#1E7B45" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg></div>
     <span style="font-size:20px;font-weight:700">Registrado!</span>
-    <span style="font-size:14px;color:var(--sub);line-height:1.5">${esc(r.cliente)} · ${esc(r.tipo)} · ${esc(r.resultado)}${r.cliente_novo ? '<br>Cliente novo: entra na carteira como Potencial.' : ''}${r.sist_implantes ? '<br>Sistema de implantes: <b style="color:var(--txt)">' + esc(r.sist_implantes) + '</b>' : ''}<br>${falta ? `Faltam <b style="color:var(--txt)">${falta}</b> para a meta de hoje.` : '<b style="color:#1E7B45">Meta de hoje batida! 🎉</b>'}</span></div>
+    <span style="font-size:14px;color:var(--sub);line-height:1.5">${esc(r.cliente)} · ${esc(r.tipo)} · ${esc(r.resultado)}${r.cliente_novo ? '<br>Cliente novo: entra na carteira como Potencial.' : ''}${r.sist_implantes ? '<br>Sistema de implantes: <b style="color:var(--txt)">' + esc(r.sist_implantes) + '</b>' : ''}${r.op_oportunidade ? '<br>💡 Oportunidade: <b style="color:var(--txt)">' + esc(r.op_oportunidade) + (r.op_valor ? ' · R$ ' + Number(r.op_valor).toLocaleString('pt-BR', {maximumFractionDigits: 0}) : '') + '</b>' : ''}<br>${falta ? `Faltam <b style="color:var(--txt)">${falta}</b> para a meta de hoje.` : '<b style="color:#1E7B45">Meta de hoje batida! 🎉</b>'}</span></div>
   ${prox.length ? `<div class="bloco" style="gap:4px"><span class="lbl">Próximos da agenda de hoje</span>
     ${prox.map(c => `<div class="prox"><div><div style="font-size:15px;font-weight:600">${esc(c.n)}</div><div style="font-size:12px;color:var(--sub)">${esc(c.st || '—')}${c.ult ? ' · última compra ' + esc(c.ult) : ''}</div></div><button data-ir="${esc(c.n)}">Registrar</button></div>`).join('')}</div>` : ''}
   <div class="dica" style="text-align:center">${A.teste ? 'Modo de teste: este registro NÃO vai para a planilha nem conta no placar oficial.' : 'Vai para a sua planilha (aba INTERACOES) na próxima rodada do robô.'}</div>
@@ -156,6 +175,10 @@ function ligar() {
   const px = $('#prox'); if (px) px.onchange = () => S.prox = px.value;
   ['conc', 'motivo'].forEach(id => { const e = $('#' + id); if (e) e.onchange = () => S[id] = e.value; });
   const ob = $('#obs'); if (ob) ob.oninput = () => S.obs = ob.value;
+  on('op-abrir', () => { S.op = true; render(); const e = $('#campo-op'); if (e) e.scrollIntoView({block: 'start', behavior: 'smooth'}); });
+  on('op-fechar', () => { Object.assign(S, {op: false, opClass: null, opProd: null, opPot: null, opValor: '', opAcao: '', opData: ''}); render(); });
+  [['opvalor', 'opValor'], ['opacao', 'opAcao']].forEach(([id, k]) => { const e = $('#' + id); if (e) e.oninput = () => S[k] = e.value; });
+  const od = $('#opdata'); if (od) od.onchange = () => S.opData = od.value;
 }
 
 function salvar() {
@@ -164,7 +187,8 @@ function salvar() {
     const ex = A.clientes.filter(c => chave(c.n) === chave(S.busca));
     if (ex.length === 1) { S.cliente = ex[0].n; S.novo = false; }
   }
-  const faltas = [[!S.cliente, 'cliente', 'campo-cliente'], [!S.tipo, 'como foi', 'campo-tipo'], [!S.res, 'resultado', 'campo-res']].filter(x => x[0]);
+  const faltas = [[!S.cliente, 'cliente', 'campo-cliente'], [!S.tipo, 'como foi', 'campo-tipo'], [!S.res, 'resultado', 'campo-res'],
+                  [S.op && !S.opClass, 'classificação da oportunidade', 'campo-op'], [S.op && !S.opProd, 'qual a oportunidade', 'campo-op']].filter(x => x[0]);
   if (faltas.length) {
     erro = 'Falta escolher: ' + faltas.map(x => x[1]).join(', ') + '.';
     render();
@@ -176,6 +200,8 @@ function salvar() {
   const registro = {cliente: S.cliente, cliente_novo: S.novo, origem: S.origem, tipo: S.tipo, resultado: S.res,
     proximo_contato: S.prox || null, sist_implantes: S.sist, concorrente: S.conc || null, motivo: S.motivo || null,
     nivel_risco: S.risco, observacoes: S.obs.trim() || null};
+  if (S.op) Object.assign(registro, {op_classificacao: S.opClass, op_oportunidade: S.opProd, op_potencial: S.opPot,
+    op_valor: valorNum(S.opValor), op_proxima_acao: S.opAcao.trim() || null, op_data_proxima: S.opData || null});
   render();
   enviar('streamlit:setComponentValue', {value: {nonce: pendente, registro}, dataType: 'json'});
   setTimeout(() => { if (pendente) { pendente = null; erro = 'Demorou demais para salvar. Confira a internet e tente de novo.'; render(); } }, 25000);
