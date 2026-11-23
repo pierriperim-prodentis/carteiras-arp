@@ -152,7 +152,7 @@ function blocoOportunidade() {
   return `<div class="bloco duas" id="campo-op" style="border-color:#E3C26B;background:#FFFDF6">
     <div class="col">
       <div class="linha" style="justify-content:space-between"><span style="font-weight:700;font-size:15px">💡 Oportunidade</span><button class="trocar" id="op-fechar">Remover</button></div>
-      <div class="campo"><span class="lbl">Classificação</span>${chips('opClass', ['Crescimento', 'Recuperação', 'Defesa', 'Desenvolvimento'])}${S.tentou && !S.opClass ? '<span class="erro">Escolha a classificação.</span>' : ''}</div>
+      <div class="campo"><span class="lbl">Classificação</span>${chips('opClass', ['Crescimento', 'Recuperação'])}${S.tentou && !S.opClass ? '<span class="erro">Escolha a classificação.</span>' : ''}</div>
       <div class="campo"><span class="lbl">Oportunidade principal</span>${chips('opProd', ['Implantes', 'Componentes', 'Biomateriais', 'Scanner', 'Cirurgia Guiada', 'Instrumentais', 'Clareadores', 'Migração para GM', 'Outro'])}${S.tentou && !S.opProd ? '<span class="erro">Escolha a oportunidade.</span>' : ''}</div>
     </div>
     <div class="col">
