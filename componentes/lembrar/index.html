@@ -31,6 +31,15 @@ window.addEventListener('message', ev => {
     try {
       d.querySelectorAll('link[rel="apple-touch-icon"]').forEach(l => l.remove());
       const l = d.createElement('link'); l.rel = 'apple-touch-icon'; l.href = url; d.head.appendChild(l);
+      // Android/Chrome: ícone e nome do app instalado vêm do "manifest"
+      const est = location.origin + base + '/app/static/';
+      d.querySelectorAll('link[rel="manifest"]').forEach(l => l.remove());
+      const mf = d.createElement('link'); mf.rel = 'manifest'; mf.href = est + 'manifest.json'; d.head.appendChild(mf);
+      d.querySelectorAll('link[rel="icon"][sizes="192x192"]').forEach(l => l.remove());
+      const ic = d.createElement('link'); ic.rel = 'icon'; ic.sizes = '192x192'; ic.href = est + 'icon-192.png'; d.head.appendChild(ic);
+      let tc = d.querySelector('meta[name="theme-color"]');
+      if (!tc) { tc = d.createElement('meta'); tc.name = 'theme-color'; d.head.appendChild(tc); }
+      tc.content = '#534AB7';
       if (!d.querySelector('meta[name="apple-mobile-web-app-title"]')) {
         const m = d.createElement('meta'); m.name = 'apple-mobile-web-app-title'; m.content = 'Carteiras'; d.head.appendChild(m);
       }
